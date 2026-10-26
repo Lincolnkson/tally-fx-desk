@@ -126,7 +126,7 @@ V.desk = async v => {
   v.innerHTML = h; bind(v);
 };
 function sigCard(x) {
-  const ai = x.ai_verdict === 'REJECT' ? '<span class="pill loss">AI rejected</span>' : x.ai_verdict === 'REDUCE_SIZE' ? '<span class="pill warn">AI: smaller size</span>' : x.ai_verdict ? '<span class="pill gain">AI approved</span>' : '';
+  const ai = x.ai_verdict === 'REJECT' ? '<span class="pill loss">AI rejected</span>' : x.ai_verdict === 'REDUCE_SIZE' ? '<span class="pill warn">AI: smaller size</span>' : x.ai_verdict === 'APPROVE' ? '<span class="pill gain">AI approved</span>' : x.ai_verdict === 'UNREVIEWED' ? '<span class="pill">AI review failed</span>' : '';
   const entryNote = x.entry_type === 'stop' ? 'Enter on a break of ' + fp(x.pair, x.entry) + ' (stop order, cancel after 2 days)' : 'Enter near ' + fp(x.pair, x.entry);
   return '<article class="card sigcard' + (x.status === 'new' ? ' flag' : '') + '"><div class="top"><div><div class="row wrap"><span class="pair">' + esc(x.pair) + '</span><span class="dir ' + esc(x.direction) + '">' + esc(x.direction) + '</span>' + ai + '</div><div class="small muted">' + esc(x.strategy || '') + ', ' + ago(x.created_at) + (x.regime ? ', market ' + mood(x.regime) : '') + '</div></div><div class="score" title="Advisor score">' + (x.score != null ? x.score : '–') + ' <small>/100</small></div></div>'
     + meter(x.breakdown) + planRuler(x)
