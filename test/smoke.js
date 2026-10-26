@@ -9,7 +9,7 @@ const call = async (m, p, body, hdr) => { const r = await fetch(base + p, { meth
   assert.equal((await call('POST', '/api/login', { password: 'pw' })).s, 200);
   assert.equal((await call('POST', '/api/ingest/brief', {})).s, 401, 'ingest needs key');
   const K = { 'x-api-key': 'k' };
-  const macro = (await call('GET', '/api/ingest/macro', null, K)).j; assert.equal(macro.rates.USD, 3.75); assert.equal(macro.standAside, false);
+  const macro = (await call('GET', '/api/ingest/macro', null, K)).j; assert.equal(macro.rates.USD, 4); assert.equal(macro.standAside, false);
   await call('POST', '/api/ingest/brief', { runAt: new Date().toISOString(), regime: 'RISK_ON', vix: 15, pairs: [{ pair: 'EURUSD', decision: 'WAIT', direction: 'LONG', score: 40, breakdown: 'F0', vetoes: ['x'] }] }, K);
   const sig = { signalId: 'EURUSD-t1', signalDate: new Date(Date.now() - 30 * 86400000).toISOString(), pair: 'EURUSD', direction: 'LONG', strategy: 'S1 Macro trend + pullback', score: 78, breakdown: 'F20 T22 S20 R5 M8 C3', entry: 1.1, stop: 1.09, target1: 1.12, target2: 1.13, rr: 2, atr: 0.005, price: 1.1, units: 10000, riskUsd: 100, aiVerdict: 'APPROVE', thesis: 't', regime: 'RISK_ON', vix: 15, vetoes: [] };
   const a = await call('POST', '/api/ingest/signal', sig, K); assert.ok(a.j.id); assert.ok((await call('POST', '/api/ingest/signal', sig, K)).j.duplicate, 'dedupe');

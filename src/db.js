@@ -23,10 +23,11 @@ const DEFAULTS = {
   limits: { maxDailyLossR: 2, maxWeeklyLossR: 4, maxOpenRiskPct: 3, maxLossStreak: 3 },
   macro: {
     settings: { minScore: 70, minRR: 2, eventBlockHours: 24 },
-    rates: { USD: 3.75, EUR: 2.0, GBP: 3.75, JPY: 0.75, AUD: 4.1, CAD: 2.25, CHF: 0.0, NZD: 2.25 },
-    stance: { USD: 0, EUR: 0, GBP: 0, JPY: 1, AUD: 1, CAD: 0, CHF: 0, NZD: 0 },
-    cb: [{ ccy: 'USD', date: '2026-10-28' }, { ccy: 'EUR', date: '2026-10-29' }, { ccy: 'JPY', date: '2026-10-30' }, { ccy: 'GBP', date: '2026-11-05' }, { ccy: 'CAD', date: '2026-12-09' }, { ccy: 'CHF', date: '2026-12-10' }],
-    riskCcy: { AUD: 1, NZD: 1, CAD: 1, EUR: 0.5, GBP: 0.5, USD: -1, JPY: -1, CHF: -1 }, updatedAt: null
+    // Checked 26 Oct 2026. USD = top of the Fed range, EUR = ECB deposit rate. 1 = hiking or leaning to hike, 0 = on hold, -1 = cutting.
+    rates: { USD: 4.0, EUR: 2.5, GBP: 3.75, JPY: 1.25, AUD: 4.6, CAD: 2.25, CHF: 0.0, NZD: 2.75 },
+    stance: { USD: 1, EUR: 1, GBP: 1, JPY: 1, AUD: 1, CAD: 0, CHF: 0, NZD: 1 },
+    cb: [{ ccy: 'USD', date: '2026-10-28' }, { ccy: 'CAD', date: '2026-10-28' }, { ccy: 'NZD', date: '2026-10-28' }, { ccy: 'EUR', date: '2026-10-29' }, { ccy: 'JPY', date: '2026-10-30' }, { ccy: 'AUD', date: '2026-11-03' }, { ccy: 'GBP', date: '2026-11-05' }, { ccy: 'CHF', date: '2026-12-10' }],
+    riskCcy: { AUD: 1, NZD: 1, CAD: 1, EUR: 0.5, GBP: 0.5, USD: -1, JPY: -1, CHF: -1 }, updatedAt: '2026-10-26T08:00:00.000Z'
   }
 };
 const getSetting = k => { const r = db.prepare('SELECT value FROM settings WHERE key=?').get(k); return r ? JSON.parse(r.value) : JSON.parse(JSON.stringify(DEFAULTS[k])); };
