@@ -36,6 +36,22 @@ const DT_DEFAULTS = () => ({ backtest: {}, equityZar: 100000, webhookUrl: '', ti
 function settingsGet() { const r = db.prepare("SELECT value FROM settings WHERE key='dt'").get(); const s = r ? JSON.parse(r.value) : {}; const d = DT_DEFAULTS(); return { ...d, ...s, strategies: { ...d.strategies, ...(s.strategies || {}) } }; }
 const settingsSet = v => setSetting('dt', v);
 
+// ---------- broker values (your spreads, commission, contract sizes and margin; override the rules file) ----------
+// Stored as you type them: spread in pips/points, commission per side in money per lot/contract (instrument's value currency).
+const BROKER_FIELDS = ['spread', 'commission', 'perUnit', 'minSize', 'step', 'marginPct'];
+function brokerDefaults(i) { return { spread: +(i.spread / i.pip).toFixed(4), commission: +(i.commission * i.perUnit).toFixed(4), perUnit: i.perUnit, minSize: i.minSize, step: i.step, marginPct: i.marginPct }; }
+function effInstruments(st) {
+  const ov = ((st || settingsGet()).broker || {}).instruments || {};
+  return (CFG.instruments || []).map(i => {
+    const o = ov[i.symbol] || {}; const v = { ...brokerDefaults(i) }; BROKER_FIELDS.forEach(k => { if (o[k] != null && o[k] !== '' && Number(o[k]) >= 0) v[k] = Number(o[k]); });
+    return { ...i, spread: v.spread * i.pip, commission: v.perUnit > 0 ? v.commission / v.perUnit : i.commission, perUnit: v.perUnit, minSize: v.minSize, step: v.step, marginPct: v.marginPct, broker_overridden: BROKER_FIELDS.filter(k => o[k] != null && o[k] !== '') };
+  });
+}
+function brokerView(st) {
+  const ov = ((st || settingsGet()).broker || {}).instruments || {};
+  return (CFG.instruments || []).map(i => ({ symbol: i.symbol, tier: i.tier, valueCcy: i.valueCcy, sizeUnit: i.sizeUnit, distUnit: i.distUnit, defaults: brokerDefaults(i), values: Object.fromEntries(BROKER_FIELDS.map(k => [k, ov[i.symbol] && ov[i.symbol][k] != null ? ov[i.symbol][k] : null])) }));
+}
+
 // ---------- time helpers (SAST, exchange time zones) ----------
 const dayKey = (t = Date.now()) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(t));
 function tzOffsetMs(tz, t) {
@@ -63,7 +79,8 @@ const num = v => (v == null || v === '' || isNaN(Number(v))) ? null : Number(v);
 const J = (v, d) => { if (v == null) return d; try { return JSON.parse(v); } catch (e) { return d; } };
 const dirOf = d => String(d || '').toLowerCase() === 'short' ? -1 : 1;
 const groupOf = inst => { for (const [g, l] of Object.entries(CFG.universe.U8_correlation_groups)) if (l.includes(inst)) return g; return null; };
-const row = r => r && { ...r, targets: J(r.targets, []), invalidation: J(r.invalidation, []), rules: J(r.rules, []), reasons: J(r.reasons, []), errors: J(r.errors, []), payload: undefined, group: groupOf(r.instrument) };
+const row = r => r && { ...r, targets: J(r.targets, []), invalidation: J(r.invalidation, []), rules: J(r.rules, []), reasons: J(r.reasons, []), errors: J(r.errors, []), payload: undefined, group: groupOf(r.instrument), ...cardMoney(r.payload) };
+const cardMoney = p => { const k = (J(p, {}) || {}).risk || {}; return { margin_zar: num(k.margin_zar), notional_zar: num(k.notional_zar), k6_reduced: !!k.k6_reduced }; };
 const resolvedTaken = "user_action='taken' AND closed_at IS NOT NULL";
 const openTakenSql = "user_action='taken' AND closed_at IS NULL";
 
@@ -72,8 +89,10 @@ function closedTaken() { return db.prepare('SELECT * FROM dt_signals WHERE ' + r
 function equity(st) { const s = st || settingsGet(); const p = db.prepare('SELECT COALESCE(SUM(pnl_zar),0) p FROM dt_signals WHERE ' + resolvedTaken).get().p + db.prepare("SELECT COALESCE(SUM(f.pnl_zar),0) p FROM dt_fills f JOIN dt_signals s ON s.id=f.sig_id WHERE s.closed_at IS NULL AND f.kind='partial'").get().p; return s.equityZar + p; }
 function openExposure() {
   const rows = db.prepare('SELECT * FROM dt_signals WHERE ' + openTakenSql).all();
-  return rows.map(r => ({ id: r.id, signal_id: r.signal_id, instrument: r.instrument, direction: r.direction, group: groupOf(r.instrument), risk_pct: (r.risk_pct || 0) * (r.act_size && r.size ? r.act_size / r.size : 1) * (r.units_left != null && r.act_size ? r.units_left / r.act_size : 1), strategy_id: r.strategy_id, status: r.status }));
+  return rows.map(r => ({ id: r.id, signal_id: r.signal_id, instrument: r.instrument, direction: r.direction, group: groupOf(r.instrument), risk_pct: (r.risk_pct || 0) * (r.act_size && r.size ? r.act_size / r.size : 1) * (r.units_left != null && r.act_size ? r.units_left / r.act_size : 1), strategy_id: r.strategy_id, status: r.status, ...exposureMoney(r) }));
 }
+// Margin and notional in ZAR from the advisor's signal (risk.margin_zar / risk.notional_zar), scaled to what you actually hold.
+function exposureMoney(r) { const p = J(r.payload, {}); const k = (r.act_size && r.size ? r.act_size / r.size : 1) * (r.units_left != null && r.act_size ? r.units_left / r.act_size : 1); const m = num((p.risk || {}).margin_zar), n = num((p.risk || {}).notional_zar); return { margin_zar: m == null ? null : Math.round(m * k), notional_zar: n == null ? null : Math.round(n * k) }; }
 function breakers(t = Date.now()) {
   const C = CFG.circuit_breakers, st = settingsGet(), eq = equity(st), today = dayKey(t); const items = closedTaken();
   const todays = items.filter(x => dayKey(Date.parse(x.closed_at)) === today);
@@ -271,14 +290,14 @@ function mount({ ingest, api, addEvent, push, guard }) {
     return { rulebook_version: CFG.rulebook_version, now: nowIso(), sast_day: dayKey(), equity_zar: Math.round(equity(st)), advisor_state: A.state, alerts_enabled: A.alertsEnabled, a_plus_only: A.aPlusOnly, reasons: A.reasons,
       risk_multiplier: A.riskMult, risk_pct_by_stage: CFG.risk.K1_risk_pct_by_stage, strategies: st.strategies, alerting_stages: ALERT_STAGES, tier2_enabled: st.tier2Enabled,
       readiness: A.readiness ? { done: true, ok: A.readiness.ok } : { done: false, ok: false }, breakers: { day_r: +A.breakers.dayR.toFixed(2), week_r: +A.breakers.weekR.toFixed(2), last_week_r: +A.breakers.lastWeekR.toFixed(2), loss_streak: A.breakers.lossStreak, trades_today: A.breakers.tradesToday, per_instrument: A.breakers.perInstrument, drawdown_r: +A.breakers.ddR.toFixed(2), codes: A.breakers.codes },
-      open_positions: ex, open_risk_pct: +ex.reduce((a, x) => a + (x.risk_pct || 0), 0).toFixed(3), armed: db.prepare("SELECT signal_id, instrument, strategy_id FROM dt_signals WHERE gate='ALERT' AND status='ARMED' AND user_action IS NULL").all(), sessions_open: sessions().openNow, blackouts_active: blackouts().filter(b => b.active).map(b => ({ ccy: b.ccy, title: b.title, until: b.end })),
+      open_positions: ex, open_risk_pct: +ex.reduce((a, x) => a + (x.risk_pct || 0), 0).toFixed(3), margin_used_zar: ex.reduce((a, x) => a + (x.margin_zar || 0), 0), notional_open_zar: ex.reduce((a, x) => a + (x.notional_zar || 0), 0), armed: db.prepare("SELECT signal_id, instrument, strategy_id FROM dt_signals WHERE gate='ALERT' AND status='ARMED' AND user_action IS NULL").all(), sessions_open: sessions().openNow, blackouts_active: blackouts().filter(b => b.active).map(b => ({ ccy: b.ccy, title: b.title, until: b.end })),
       blackouts: blackouts().map(b => ({ at: b.at, ccy: b.ccy, impact: b.impact, kind: b.kind, title: b.title, start: b.start, end: b.end, active: b.active })),
       today_signals: db.prepare('SELECT signal_id, created_at, instrument, strategy_id, direction, gate, status, user_action, plan_r, plan_exit_reason, plan_closed_at FROM dt_signals WHERE created_at >= ? AND source=? ORDER BY created_at').all(new Date(zonedUtc(dayKey(), '00:00', TZ)).toISOString(), 'advisor') };
   };
 
   // --- n8n → Tally ---
   ingest.get('/dt/context', (req, res) => res.json(ctx()));
-  ingest.get('/dt/config', (req, res) => res.json({ ...CFG, effective: { strategies: settingsGet().strategies, tier2_enabled: settingsGet().tier2Enabled } }));
+  ingest.get('/dt/config', (req, res) => { const st = settingsGet(); res.json({ ...CFG, instruments: effInstruments(st), effective: { strategies: st.strategies, tier2_enabled: st.tier2Enabled } }); });
   ingest.post('/dt/signals', (req, res) => {
     const b = req.body || {}; if (b.decision && b.decision !== 'SIGNAL') return res.status(400).json({ error: 'decision must be SIGNAL here; send NO_TRADE decisions to /api/ingest/dt/decisions' });
     const s = normalise(b); const miss = missing(s); if (miss.length) return res.status(400).json({ error: 'INCOMPLETE_SIGNAL (H1): missing ' + miss.join(', '), code: 'INCOMPLETE_SIGNAL', missing: miss });
@@ -384,10 +403,14 @@ function mount({ ingest, api, addEvent, push, guard }) {
   api.get('/dt/stages', (req, res) => res.json(stages()));
   api.put('/dt/stages/:sid', guard((req, res) => { const id = req.params.sid; if (!CFG.strategies[id]) throw new Error('Unknown strategy'); const b = req.body || {}; const st = settingsGet(); if ('backtestE' in b) { st.backtest = st.backtest || {}; if (b.backtestE === '' || b.backtestE == null) delete st.backtest[id]; else { if (num(b.backtestE) == null) throw new Error('Backtest expectancy must be a number of R'); st.backtest[id] = num(b.backtestE); } if (!b.stage) { settingsSet(st); return res.json({ ok: true }); } } const stg = String(b.stage || '').toUpperCase(); if (!STAGES.includes(stg)) throw new Error('Unknown stage'); const was = st.strategies[id]; st.strategies[id] = stg; settingsSet(st); addEvent('day', 'info', id + ' moved from ' + was + ' to ' + stg, (req.body && req.body.note) || ''); refresh(); res.json({ ok: true }); }));
   api.get('/dt/rules', (req, res) => res.json({ config: CFG, strategies: settingsGet().strategies, stages: STAGES }));
-  api.get('/dt/settings', (req, res) => { const st = settingsGet(); res.json({ equityZar: st.equityZar, webhookUrl: st.webhookUrl, tier2Enabled: st.tier2Enabled, webhook: st.webhook }); });
+  api.get('/dt/settings', (req, res) => { const st = settingsGet(); res.json({ equityZar: st.equityZar, equityNow: Math.round(equity(st)), webhookUrl: st.webhookUrl, tier2Enabled: st.tier2Enabled, webhook: st.webhook, broker: brokerView(st), k6: CFG.risk.K6 }); });
   api.put('/dt/settings', guard((req, res) => {
     const b = req.body || {}; const st = settingsGet();
     if (b.equityZar != null) { if (!(Number(b.equityZar) > 0)) throw new Error('Starting equity must be positive'); st.equityZar = Number(b.equityZar); }
+    if (b.brokerBalanceZar != null && b.brokerBalanceZar !== '') { const bal = Number(b.brokerBalanceZar); if (!(bal > 0)) throw new Error('Broker balance must be positive'); const start = bal - (equity(st) - st.equityZar); if (!(start > 0)) throw new Error('That balance is lower than your logged losses allow; check your journal'); st.equityZar = Math.round(start * 100) / 100; }
+    if (b.broker && typeof b.broker === 'object') { const known = new Set((CFG.instruments || []).map(i => i.symbol)); const out = {};
+      Object.entries(b.broker.instruments || {}).forEach(([sym, v]) => { if (!known.has(sym) || !v) return; const o = {}; BROKER_FIELDS.forEach(k => { const x = v[k]; if (x == null || x === '') return; const n = Number(x); if (!isFinite(n) || n < 0) throw new Error(sym + ': ' + k + ' must be a number of zero or more'); if (['perUnit', 'minSize', 'step'].includes(k) && !(n > 0)) throw new Error(sym + ': ' + k + ' must be above zero'); if (k === 'marginPct' && n > 100) throw new Error(sym + ': margin can be at most 100%'); o[k] = n; }); if (Object.keys(o).length) out[sym] = o; });
+      st.broker = { instruments: out, updatedAt: nowIso() }; }
     if (b.webhookUrl != null) { const u = String(b.webhookUrl).trim(); if (u && !/^https:\/\/[^\s]+$/i.test(u)) throw new Error('The n8n webhook URL must start with https://'); st.webhookUrl = u; }
     if (b.tier2Enabled != null) st.tier2Enabled = !!b.tier2Enabled; settingsSet(st); refresh(); res.json({ ok: true });
   }));

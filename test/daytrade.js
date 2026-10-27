@@ -94,6 +94,18 @@ const O1 = (o = {}) => Object.assign({
   const stg = (await call('GET', '/api/dt/stages')).j; assert.equal(stg.find(x => x.id === 'S2').stage, 'PAPER'); assert.ok(stg.find(x => x.id === 'S2').checks.length);
   assert.ok(String((await call('GET', '/api/dt/export.csv')).j).startsWith('signal_id,'));
   assert.equal((await call('GET', '/api/ingest/dt/config', null, K)).j.rulebook_version, 'dt-rules-1.0');
+  // broker values: pips and money per lot in, price units out; bad input refused; balance matching keeps logged results
+  assert.equal((await call('PUT', '/api/dt/settings', { broker: { instruments: { EURUSD: { spread: 1.2, commission: 3.5, marginPct: 1 } } } })).s, 200);
+  assert.equal((await call('PUT', '/api/dt/settings', { broker: { instruments: { EURUSD: { step: 0 } } } })).s, 400);
+  const bcfg = (await call('GET', '/api/ingest/dt/config', null, K)).j; const eu = bcfg.instruments.find(i => i.symbol === 'EURUSD');
+  assert.ok(Math.abs(eu.spread - 0.00012) < 1e-12 && Math.abs(eu.commission - 0.000035) < 1e-12 && eu.marginPct === 1, 'broker overrides applied');
+  assert.equal(bcfg.instruments.find(i => i.symbol === 'US500').spread, 0.5, 'untouched instruments keep defaults');
+  const bs = (await call('GET', '/api/dt/settings')).j; assert.equal(bs.broker.find(b => b.symbol === 'EURUSD').values.spread, 1.2);
+  const before = bs.equityNow, gain = before - bs.equityZar; assert.equal((await call('PUT', '/api/dt/settings', { brokerBalanceZar: 123456 })).s, 200);
+  const after = (await call('GET', '/api/dt/settings')).j; assert.equal(after.equityNow, 123456); assert.ok(Math.abs(after.equityNow - after.equityZar - gain) < 1, 'logged results unchanged');
+  const cx = (await call('GET', '/api/ingest/dt/context', null, K)).j; assert.ok('margin_used_zar' in cx && 'notional_open_zar' in cx);
+  assert.equal((await call('PUT', '/api/dt/settings', { broker: { instruments: {} } })).s, 200);
+  assert.ok(Math.abs((await call('GET', '/api/ingest/dt/config', null, K)).j.instruments.find(i => i.symbol === 'EURUSD').spread - 0.00008) < 1e-12, 'reset to defaults');
   // sessions: London open shifts with UK daylight saving; 27 Oct 2026 London is on GMT (10:00 SAST), New York still on EDT (15:30 SAST)
   const s27 = DT.sessions(Date.parse('2026-10-27T08:30:00Z')); const sast = iso => new Date(iso).toLocaleTimeString('en-ZA', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', hour12: false });
   assert.equal(sast(s27.windows.find(w => w.key === 'LONDON_OPEN').start), '10:00'); assert.equal(sast(s27.windows.find(w => w.key === 'NY_OPEN').start), '15:30');

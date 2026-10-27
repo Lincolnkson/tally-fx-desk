@@ -717,7 +717,8 @@
       "step": 0.01,
       "minSize": 0.01,
       "distUnit": "pips",
-      "round": 0.005
+      "round": 0.005,
+      "marginPct": 3.33
     },
     {
       "symbol": "GBPUSD",
@@ -738,7 +739,8 @@
       "step": 0.01,
       "minSize": 0.01,
       "distUnit": "pips",
-      "round": 0.005
+      "round": 0.005,
+      "marginPct": 3.33
     },
     {
       "symbol": "USDJPY",
@@ -759,7 +761,8 @@
       "step": 0.01,
       "minSize": 0.01,
       "distUnit": "pips",
-      "round": 0.5
+      "round": 0.5,
+      "marginPct": 3.33
     },
     {
       "symbol": "US500",
@@ -779,7 +782,8 @@
       "step": 0.1,
       "minSize": 0.1,
       "distUnit": "points",
-      "round": 50
+      "round": 50,
+      "marginPct": 5
     },
     {
       "symbol": "NAS100",
@@ -799,7 +803,8 @@
       "step": 0.1,
       "minSize": 0.1,
       "distUnit": "points",
-      "round": 100
+      "round": 100,
+      "marginPct": 5
     },
     {
       "symbol": "GER40",
@@ -819,7 +824,8 @@
       "step": 0.1,
       "minSize": 0.1,
       "distUnit": "points",
-      "round": 100
+      "round": 100,
+      "marginPct": 5
     },
     {
       "symbol": "XAUUSD",
@@ -839,7 +845,8 @@
       "step": 0.01,
       "minSize": 0.01,
       "distUnit": "points",
-      "round": 10
+      "round": 10,
+      "marginPct": 5
     },
     {
       "symbol": "USDZAR",
@@ -860,8 +867,9 @@
       "step": 0.01,
       "minSize": 0.01,
       "distUnit": "pips",
-      "round": 0.05
+      "round": 0.05,
+      "marginPct": 5
     }
   ],
-  "instruments_note": "Used by the n8n advisor and trade manager. ticker = Yahoo symbol; pip = unit for stop_distance; tick = price increment; spread and commission in price units; valueCcy and perUnit give the value of a 1-point move per 1 unit of size. Edit spreads and contract values to match your broker."
+  "instruments_note": "Used by the n8n advisor and trade manager. ticker = Yahoo symbol; pip = unit for stop_distance; tick = price increment; spread and commission in price units; valueCcy and perUnit give the value of a 1-point move per 1 unit of size. Edit spreads and contract values to match your broker. marginPct is the broker margin requirement as a % of position value (1:30 leverage = 3.33). Your own spreads, commission, contract sizes and margin are set in Tally under Day trading → Setup → Broker, which override these defaults."
 }
