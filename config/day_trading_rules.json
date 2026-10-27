@@ -696,5 +696,172 @@
       "trade.off_plan"
     ],
     "webhooks_out_note": "Set the n8n Webhook URL in Tally > Day trading > Setup. Tally sends the same x-api-key header so n8n can verify the caller."
-  }
+  },
+  "instruments": [
+    {
+      "symbol": "EURUSD",
+      "ticker": "EURUSD=X",
+      "tier": 1,
+      "session": "FX",
+      "ccys": [
+        "EUR",
+        "USD"
+      ],
+      "pip": 0.0001,
+      "tick": 1e-05,
+      "spread": 8e-05,
+      "commission": 0,
+      "valueCcy": "USD",
+      "perUnit": 100000,
+      "sizeUnit": "lots",
+      "step": 0.01,
+      "minSize": 0.01,
+      "distUnit": "pips",
+      "round": 0.005
+    },
+    {
+      "symbol": "GBPUSD",
+      "ticker": "GBPUSD=X",
+      "tier": 1,
+      "session": "FX",
+      "ccys": [
+        "GBP",
+        "USD"
+      ],
+      "pip": 0.0001,
+      "tick": 1e-05,
+      "spread": 0.00012,
+      "commission": 0,
+      "valueCcy": "USD",
+      "perUnit": 100000,
+      "sizeUnit": "lots",
+      "step": 0.01,
+      "minSize": 0.01,
+      "distUnit": "pips",
+      "round": 0.005
+    },
+    {
+      "symbol": "USDJPY",
+      "ticker": "USDJPY=X",
+      "tier": 1,
+      "session": "FX",
+      "ccys": [
+        "USD",
+        "JPY"
+      ],
+      "pip": 0.01,
+      "tick": 0.001,
+      "spread": 0.01,
+      "commission": 0,
+      "valueCcy": "JPY",
+      "perUnit": 100000,
+      "sizeUnit": "lots",
+      "step": 0.01,
+      "minSize": 0.01,
+      "distUnit": "pips",
+      "round": 0.5
+    },
+    {
+      "symbol": "US500",
+      "ticker": "^GSPC",
+      "tier": 1,
+      "session": "NY",
+      "ccys": [
+        "USD"
+      ],
+      "pip": 1,
+      "tick": 0.25,
+      "spread": 0.5,
+      "commission": 0,
+      "valueCcy": "USD",
+      "perUnit": 1,
+      "sizeUnit": "contracts",
+      "step": 0.1,
+      "minSize": 0.1,
+      "distUnit": "points",
+      "round": 50
+    },
+    {
+      "symbol": "NAS100",
+      "ticker": "^NDX",
+      "tier": 1,
+      "session": "NY",
+      "ccys": [
+        "USD"
+      ],
+      "pip": 1,
+      "tick": 0.25,
+      "spread": 1.5,
+      "commission": 0,
+      "valueCcy": "USD",
+      "perUnit": 1,
+      "sizeUnit": "contracts",
+      "step": 0.1,
+      "minSize": 0.1,
+      "distUnit": "points",
+      "round": 100
+    },
+    {
+      "symbol": "GER40",
+      "ticker": "^GDAXI",
+      "tier": 1,
+      "session": "XETRA",
+      "ccys": [
+        "EUR"
+      ],
+      "pip": 1,
+      "tick": 0.5,
+      "spread": 1.5,
+      "commission": 0,
+      "valueCcy": "EUR",
+      "perUnit": 1,
+      "sizeUnit": "contracts",
+      "step": 0.1,
+      "minSize": 0.1,
+      "distUnit": "points",
+      "round": 100
+    },
+    {
+      "symbol": "XAUUSD",
+      "ticker": "GC=F",
+      "tier": 2,
+      "session": "FX",
+      "ccys": [
+        "USD"
+      ],
+      "pip": 0.1,
+      "tick": 0.01,
+      "spread": 0.35,
+      "commission": 0,
+      "valueCcy": "USD",
+      "perUnit": 100,
+      "sizeUnit": "lots",
+      "step": 0.01,
+      "minSize": 0.01,
+      "distUnit": "points",
+      "round": 10
+    },
+    {
+      "symbol": "USDZAR",
+      "ticker": "USDZAR=X",
+      "tier": 2,
+      "session": "FX",
+      "ccys": [
+        "USD",
+        "ZAR"
+      ],
+      "pip": 0.0001,
+      "tick": 1e-05,
+      "spread": 0.009,
+      "commission": 0,
+      "valueCcy": "ZAR",
+      "perUnit": 100000,
+      "sizeUnit": "lots",
+      "step": 0.01,
+      "minSize": 0.01,
+      "distUnit": "pips",
+      "round": 0.05
+    }
+  ],
+  "instruments_note": "Used by the n8n advisor and trade manager. ticker = Yahoo symbol; pip = unit for stop_distance; tick = price increment; spread and commission in price units; valueCcy and perUnit give the value of a 1-point move per 1 unit of size. Edit spreads and contract values to match your broker."
 }
