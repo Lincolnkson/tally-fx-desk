@@ -1,0 +1,700 @@
+{
+  "rulebook_version": "dt-rules-1.0",
+  "updated": "2026-10-27",
+  "notes": "Starting defaults from the Day Trading Advisor Rulebook. Every value here is tunable in backtesting; code must read from this file, never hard-code. All P&L and stats in R.",
+  "account": {
+    "base_currency": "ZAR",
+    "broker_fsca_verified": false,
+    "stage_default": "PAPER"
+  },
+  "hard_rules": {
+    "H3_risk_pct_ceiling": 1.0,
+    "H4_flat_minutes_before_close": 10,
+    "H6_max_cost_r": 0.1,
+    "H6_scalp_max_cost_pct_of_target": 20,
+    "H7_min_primary_rr": 1.5,
+    "H7_scalp_min_rr": 1.0,
+    "H8_max_bar_age_intervals": 2,
+    "H10_max_total_open_risk_pct": 1.0,
+    "H10_max_positions_per_instrument": 1,
+    "H16_alerting_stages": [
+      "PAPER",
+      "MICRO_LIVE",
+      "LIVE",
+      "LIVE_PROVEN"
+    ]
+  },
+  "data": {
+    "base_timeframe": "1m",
+    "decision_timeframe": "5m",
+    "bias_timeframes": [
+      "15m",
+      "1D"
+    ],
+    "atr_period": 14,
+    "adr_days": 20,
+    "ema_5m": [
+      9,
+      20
+    ],
+    "ema_15m": [
+      20,
+      50
+    ],
+    "ema_1d": 20,
+    "adx_period": 14,
+    "er_period": 20,
+    "rvol_lookback_sessions": 20,
+    "vwap_slope_bars": 6,
+    "vwap_bands_sd": [
+      1,
+      2
+    ],
+    "bollinger": {
+      "period": 20,
+      "sd": 2
+    },
+    "rsi_periods": [
+      14,
+      2
+    ],
+    "swing_pivot_bars_each_side": 2,
+    "level_touch_tolerance_atr": 0.15,
+    "level_min_touches": 2,
+    "spread_median_lookback_sessions": 20,
+    "calendar_refresh_minutes": 15
+  },
+  "sessions": {
+    "timezone_display": "Africa/Johannesburg",
+    "note": "Times are exchange-local; convert at runtime with an IANA tz library (rule T1).",
+    "windows": {
+      "ASIA": {
+        "tz": "Asia/Tokyo",
+        "start": "09:00",
+        "end": "15:00"
+      },
+      "LONDON_OPEN": {
+        "tz": "Europe/London",
+        "start": "08:00",
+        "end": "10:00"
+      },
+      "JSE": {
+        "tz": "Africa/Johannesburg",
+        "start": "09:00",
+        "end": "16:50"
+      },
+      "NY_OPEN": {
+        "tz": "America/New_York",
+        "start": "09:30",
+        "end": "11:30"
+      },
+      "OVERLAP": {
+        "tz": "America/New_York",
+        "start": "08:00",
+        "end": "11:00"
+      },
+      "US_MIDDAY": {
+        "tz": "America/New_York",
+        "start": "11:30",
+        "end": "13:30"
+      },
+      "US_FINAL_HOUR": {
+        "tz": "America/New_York",
+        "start": "15:00",
+        "end": "15:50"
+      },
+      "FX_ROLLOVER": {
+        "tz": "America/New_York",
+        "time": "17:00"
+      }
+    },
+    "T2_no_entry_minutes_after_open": 2,
+    "T3_orb_entry_cutoff_minutes": 90,
+    "T4_momentum_window_minutes": 120,
+    "T6_blackout": {
+      "high": {
+        "before_min": 15,
+        "after_min": 5
+      },
+      "medium": {
+        "before_min": 5,
+        "after_min": 2
+      },
+      "rate_decision": {
+        "before_min": 15,
+        "until": "press_conference_end"
+      }
+    },
+    "T7_last_entry_minutes_before_close": 60,
+    "T8_friday_cutoff": {
+      "tz": "America/New_York",
+      "time": "12:00"
+    },
+    "T10_monday_asia_no_entry_minutes": 60
+  },
+  "universe": {
+    "tier1": [
+      "EURUSD",
+      "GBPUSD",
+      "USDJPY",
+      "US500",
+      "NAS100",
+      "GER40"
+    ],
+    "tier2": [
+      "XAUUSD",
+      "SA40",
+      "USDZAR"
+    ],
+    "tier2_enabled": false,
+    "U2_min_adv_value": {
+      "US": 20000000,
+      "JSE_ZAR": 100000000
+    },
+    "U2_min_price_usd": 5,
+    "U3_max_spread_ratio": 1.5,
+    "U3_max_spread_pct_of_atr5m": 10,
+    "U4_min_atr_ratio": 0.6,
+    "U4_min_rvol": 0.6,
+    "U6_equity_catalyst": {
+      "min_gap_pct": 2,
+      "min_rvol": 2
+    },
+    "U8_correlation_groups": {
+      "USD": [
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY",
+        "XAUUSD"
+      ],
+      "US_INDICES": [
+        "US500",
+        "NAS100",
+        "US30"
+      ],
+      "EU_INDICES": [
+        "GER40"
+      ],
+      "ZAR": [
+        "USDZAR",
+        "SA40"
+      ]
+    },
+    "instrument_risk_multiplier": {
+      "XAUUSD": 0.75
+    }
+  },
+  "regime": {
+    "R1_event": {
+      "atr_ratio_gt": 2.0,
+      "spread_ratio_gt": 2.0,
+      "s5_window_before_min": 15,
+      "s5_window_after_min": 90
+    },
+    "R2_dead": {
+      "rvol_lt": 0.6,
+      "atr_ratio_lt": 0.6
+    },
+    "R3_trend": {
+      "adx_gte": 25,
+      "er_gte": 0.4,
+      "vwap_side_pct_gte": 80,
+      "vwap_slope_consistent_bars": 6,
+      "rvol_gte": 1.2
+    },
+    "R4_range": {
+      "adx_lt": 20,
+      "er_lt": 0.25,
+      "vwap_crosses_gte": 4,
+      "vwap_cross_lookback_bars": 24,
+      "range_adr_ratio_lte": 0.8
+    },
+    "R6_opening_minutes": 30,
+    "R7_min_confidence": 0.5,
+    "R8_hysteresis_bars": 2,
+    "R9_routing": {
+      "OPENING": {
+        "strategies": [
+          "S2",
+          "S7"
+        ],
+        "risk_mult": 1.0
+      },
+      "TREND": {
+        "strategies": [
+          "S1",
+          "S2",
+          "S6"
+        ],
+        "risk_mult": 1.0
+      },
+      "RANGE": {
+        "strategies": [
+          "S3",
+          "S4",
+          "S7",
+          "S6"
+        ],
+        "risk_mult": 1.0
+      },
+      "TRANSITION": {
+        "strategies": [
+          "S3",
+          "S7"
+        ],
+        "risk_mult": 0.5,
+        "min_grade": "A",
+        "s3_requires_adx_lt": 20
+      },
+      "EVENT": {
+        "strategies": [
+          "S5"
+        ],
+        "risk_mult": 1.0
+      },
+      "DEAD": {
+        "strategies": [],
+        "risk_mult": 0
+      }
+    }
+  },
+  "strategies": {
+    "S1": {
+      "name": "VWAP momentum continuation",
+      "status": "RESEARCH",
+      "risk_mult": 1.0,
+      "setup": {
+        "vwap_side_pct": 80,
+        "vwap_side_lookback_bars": 12,
+        "vwap_slope_min": 0.1,
+        "rvol_min": 1.5,
+        "pullback_max_retrace": 0.618,
+        "pullback_max_close_below_vwap_atr": 0.25
+      },
+      "trigger": {
+        "min_volume_vs_avg": 1.0
+      },
+      "entry": {
+        "type": "stop",
+        "valid_bars": 2
+      },
+      "stop": {
+        "buffer_atr": 0.1,
+        "min_atr": 0.5,
+        "max_atr": 1.5
+      },
+      "targets": [
+        {
+          "id": "T1",
+          "r": 1.5,
+          "close_pct": 50
+        },
+        {
+          "id": "RUNNER",
+          "trail": "pivot_5m",
+          "close_pct": 50
+        }
+      ],
+      "exits": {
+        "vwap_close": true,
+        "ema20_consecutive_closes": 2,
+        "time_stop_bars": 6,
+        "time_stop_min_r": 0.5
+      },
+      "avoid": {
+        "beyond_vwap_sd": 2,
+        "max_leg": 2,
+        "level_within_r": 1.0
+      },
+      "max_attempts": 2
+    },
+    "S2": {
+      "name": "Opening-range breakout",
+      "status": "RESEARCH",
+      "risk_mult": 1.0,
+      "range_minutes": 15,
+      "entry_cutoff_minutes": 90,
+      "prefilter": {
+        "range_rvol_min": 1.5,
+        "range_width_adr_min": 0.25,
+        "range_width_adr_max": 0.8,
+        "max_vwap_crosses_in_range": 2
+      },
+      "trigger": {
+        "close_buffer_atr": 0.1,
+        "breakout_volume_vs_range_avg": 1.5,
+        "require_above_vwap": true,
+        "require_above_open": true
+      },
+      "entry": {
+        "mode": "retest",
+        "retest_valid_bars": 6,
+        "aggressive_valid_bars": 2
+      },
+      "stop": {
+        "default": "or_mid",
+        "buffer_atr": 0.1,
+        "min_atr": 0.5,
+        "full_range_if_width_adr_lte": 0.35
+      },
+      "targets": [
+        {
+          "id": "T1",
+          "r": 1.0,
+          "close_pct": 33
+        },
+        {
+          "id": "T2",
+          "type": "measured_move_or_2r",
+          "close_pct": 33
+        },
+        {
+          "id": "RUNNER",
+          "trail": "vwap_close",
+          "close_pct": 34
+        }
+      ],
+      "exits": {
+        "close_back_inside_range": true,
+        "arm_s7_on_failure": true
+      },
+      "max_per_direction": 1
+    },
+    "S3": {
+      "name": "Mean reversion to VWAP",
+      "status": "RESEARCH",
+      "risk_mult": 0.75,
+      "window": {
+        "after_open_min": 60,
+        "before_close_min": 90,
+        "news_buffer_min": 30
+      },
+      "setup": {
+        "vwap_sd_min": 2,
+        "or_atr_from_vwap_min": 1.5,
+        "rsi14_max": 30,
+        "rsi2_max": 5,
+        "shrinking_range_bars": 3,
+        "climax_volume_vs_avg": 2.5
+      },
+      "entry": {
+        "type": "stop",
+        "valid_bars": 2
+      },
+      "stop": {
+        "buffer_atr": 0.25,
+        "max_atr": 1.2
+      },
+      "targets": [
+        {
+          "id": "T1",
+          "level": "vwap_minus_1sd",
+          "close_pct": 50
+        },
+        {
+          "id": "T2",
+          "level": "vwap",
+          "close_pct": 50,
+          "min_r": 1.5
+        }
+      ],
+      "exits": {
+        "time_stop_bars": 8,
+        "adx_above": 25,
+        "displacement_against": true
+      },
+      "max_attempts": 2,
+      "stop_direction_after_losses": 1
+    },
+    "S4": {
+      "name": "Range and level trading",
+      "status": "RESEARCH",
+      "risk_mult": 1.0,
+      "level": {
+        "min_touches": 2,
+        "max_touches_today": 3,
+        "min_range_vs_stop_plus_cost": 3
+      },
+      "stop": {
+        "buffer_atr": 0.2,
+        "min_spread_multiple": 2
+      },
+      "targets": [
+        {
+          "id": "T1",
+          "level": "range_mid",
+          "close_pct": 50
+        },
+        {
+          "id": "T2",
+          "level": "opposite_boundary_minus_spread",
+          "close_pct": 50
+        }
+      ],
+      "failure": {
+        "close_beyond_level_hold_bars": 2
+      },
+      "max_attempts_per_level": 2
+    },
+    "S5": {
+      "name": "News and event trading",
+      "status": "RESEARCH",
+      "risk_mult": 0.5,
+      "flatten_before_event_min": 15,
+      "wait_after_release_min": 5,
+      "max_spread_ratio": 1.5,
+      "stop": {
+        "buffer_atr": 0.25,
+        "max_atr": 2.0
+      },
+      "targets": [
+        {
+          "id": "T1",
+          "r": 1.0,
+          "close_pct": 50
+        },
+        {
+          "id": "T2",
+          "r": 2.0,
+          "close_pct": 50
+        }
+      ],
+      "exits": {
+        "time_stop_min": 30,
+        "flat_after_release_min": 90
+      },
+      "sizing_extra_slippage_r": 0.5,
+      "skip_press_conferences": true,
+      "backtest_slippage_multiple": 3
+    },
+    "S6": {
+      "name": "Scalping",
+      "status": "DISABLED",
+      "risk_mult": 0.5,
+      "windows": [
+        "LONDON_OPEN",
+        "OVERLAP"
+      ],
+      "rvol_min": 1.2,
+      "max_spread_ratio": 1.2,
+      "setup": {
+        "consolidation_min_bars_1m": 6,
+        "consolidation_max_range_atr": 0.5
+      },
+      "stop": {
+        "min_atr": 0.3,
+        "max_atr": 0.6
+      },
+      "target_r": [
+        1.0,
+        1.5
+      ],
+      "time_stop_bars_1m": 5,
+      "max_per_session": 6,
+      "stop_after_consecutive_losses": 2,
+      "daily_loss_limit_r": 1.5
+    },
+    "S7": {
+      "name": "Failed-breakout reversal",
+      "status": "RESEARCH",
+      "risk_mult": 1.0,
+      "setup": {
+        "min_break_atr": 0.1,
+        "close_back_inside_within_bars": 3
+      },
+      "entry": {
+        "type": "stop",
+        "valid_bars": 2
+      },
+      "stop": {
+        "buffer_atr": 0.1
+      },
+      "targets": [
+        {
+          "id": "T1",
+          "level": "vwap_or_or_mid",
+          "close_pct": 50
+        },
+        {
+          "id": "T2",
+          "level": "opposite_range_side",
+          "close_pct": 50
+        }
+      ],
+      "max_per_level": 1
+    }
+  },
+  "scoring": {
+    "weights": {
+      "regime_fit": 20,
+      "htf": 15,
+      "volume": 15,
+      "levels": 15,
+      "rr": 15,
+      "quality": 10,
+      "timing": 10
+    },
+    "rr_full_points_at": 2.5,
+    "penalties": {
+      "event_within_30m": -15,
+      "opposing_level_within_0_5r": -10,
+      "beyond_2sd_continuation": -10,
+      "third_attempt": -10,
+      "spread_ratio_1_2_to_1_5": -5,
+      "tick_volume_only": -5
+    },
+    "grades": {
+      "A+": {
+        "min": 85,
+        "action": "ALERT",
+        "risk_mult": 1.0
+      },
+      "A": {
+        "min": 75,
+        "action": "ALERT",
+        "risk_mult": 0.75
+      },
+      "B": {
+        "min": 65,
+        "action": "LOG",
+        "risk_mult": 0.5,
+        "alert_if_bucket_trades_gte": 50,
+        "and_bucket_expectancy_gt": 0
+      },
+      "C": {
+        "min": 0,
+        "action": "SHADOW",
+        "risk_mult": 0
+      }
+    },
+    "G4_min_bucket_trades_for_stats": 50,
+    "G5_calibration_every_trades": 100
+  },
+  "risk": {
+    "K1_risk_pct_by_stage": {
+      "PAPER": 0.5,
+      "MICRO_LIVE": 0.25,
+      "LIVE": 0.5,
+      "LIVE_PROVEN": 1.0
+    },
+    "K1_live_proven_min_trades": 200,
+    "K2_transition_mult": 0.5,
+    "K6": {
+      "max_margin_pct_free_equity": 20,
+      "max_notional_x_equity_per_position": 10,
+      "max_notional_x_equity_total": 20
+    },
+    "K9_event_extra_slippage_r": 0.5
+  },
+  "management": {
+    "M1_expiry_bars": {
+      "stop_entry": 2,
+      "retest_limit": 6
+    },
+    "M3_breakeven": {
+      "after_t1": true,
+      "or_after_r": 1.2,
+      "never_before_r": 1.0
+    },
+    "M4_trails": {
+      "pivot_5m": {},
+      "vwap_close": {},
+      "ema9_close": {},
+      "chandelier": {
+        "atr_mult": 2.5
+      }
+    },
+    "M6_exit_before_opposing_event_min": 10,
+    "M7_reentry": {
+      "cooldown_min": 15,
+      "max_reentries": 1
+    },
+    "M8_pyramiding": {
+      "enabled": false,
+      "max_add_pct": 50
+    }
+  },
+  "circuit_breakers": {
+    "C1_daily_loss": {
+      "r": 2.5,
+      "pct": 1.5
+    },
+    "C2_consecutive_losses": {
+      "cooldown_after": 3,
+      "cooldown_min": 60,
+      "lock_after": 4
+    },
+    "C3_max_trades": {
+      "per_day": 5,
+      "per_instrument": 2
+    },
+    "C4_profit_protection": {
+      "halve_risk_at_r": 4,
+      "stop_if_giveback_pct": 50
+    },
+    "C5_weekly_loss_r": 6,
+    "C5_next_week_risk_mult": 0.5,
+    "C6_peak_drawdown_r": 10,
+    "C7_strategy_kill": {
+      "rolling_trades": 30,
+      "min_expectancy_r": -0.1,
+      "max_dd_vs_backtest": 1.5
+    },
+    "C8_api_errors_to_pause": 3,
+    "C9_readiness_required": true
+  },
+  "validation": {
+    "backtest_min_years": 2,
+    "backtest_min_trades": 200,
+    "walk_forward": {
+      "train_months": 12,
+      "test_months": 3
+    },
+    "robustness_param_shift_pct": 20,
+    "monte_carlo_runs": 1000,
+    "max_tuned_params_per_strategy": 3,
+    "gates": {
+      "RESEARCH_to_PAPER": {
+        "oos_expectancy_r_gt": 0.1,
+        "profit_factor_gt": 1.3
+      },
+      "PAPER_to_MICRO_LIVE": {
+        "min_days": 30,
+        "min_trades": 50,
+        "max_expectancy_gap_r": 0.1,
+        "min_adherence_pct": 90
+      },
+      "MICRO_LIVE_to_LIVE": {
+        "min_days": 60,
+        "min_trades": 75,
+        "expectancy_r_gt": 0
+      }
+    }
+  },
+  "tally": {
+    "base_url": "https://tally-production-54bd.up.railway.app",
+    "auth_header": "x-api-key",
+    "auth_note": "Use the Railway INGEST_API_KEY value. x-advisor-key is accepted as an alias.",
+    "retries": 3,
+    "endpoints": {
+      "context": "GET /api/ingest/dt/context",
+      "config": "GET /api/ingest/dt/config",
+      "create_signal": "POST /api/ingest/dt/signals",
+      "update_signal": "PATCH /api/ingest/dt/signals/{signal_id}",
+      "active_signals": "GET /api/ingest/dt/active",
+      "decisions": "POST /api/ingest/dt/decisions",
+      "advisor_state": "POST /api/ingest/dt/advisor-state",
+      "calendar": "POST /api/ingest/dt/calendar",
+      "stats": "GET /api/ingest/dt/stats"
+    },
+    "webhooks_out": [
+      "signal.taken",
+      "signal.skipped",
+      "trade.closed",
+      "readiness.submitted",
+      "lock.acknowledged",
+      "trade.off_plan"
+    ],
+    "webhooks_out_note": "Set the n8n Webhook URL in Tally > Day trading > Setup. Tally sends the same x-api-key header so n8n can verify the caller."
+  }
+}

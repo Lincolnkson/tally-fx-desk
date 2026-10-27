@@ -1,7 +1,7 @@
 {
   "name": "tally-fx-desk",
   "version": "1.0.0",
-  "description": "Tally: trade desk, journal and backtester for the n8n Forex Confluence Advisor",
+  "description": "Tally: trade desk, journal and backtester for the n8n Forex Confluence Advisor and the intraday Day Trading Advisor",
   "main": "src/server.js",
   "private": true,
   "type": "commonjs",
@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node test/smoke.js && node test/bt.js",
+    "test": "node test/smoke.js && node test/bt.js && node test/daytrade.js",
     "demo": "node test/demo.js"
   },
   "dependencies": {

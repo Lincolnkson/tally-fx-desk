@@ -43,5 +43,6 @@ ev.run(iso(now - 9 * 3600000), 'brief', 'info', 'Daily brief: 1 enter, 2 watch, 
 ev.run(iso(now - 9 * 3600000), 'signal', 'action', 'GBPUSD LONG signal, score 78', 'Pullback in a daily uptrend with UK rates holding up.', null, null, 0);
 ev.run(iso(now - 3 * 3600000), 'trade', 'action', 'EURUSD LONG: take partial', 'Target 1 (2R) reached. Bank about half and keep the rest running with the trailing stop.', 1 + outcomes.length, null, 0);
 db.prepare("INSERT INTO settings(key,value) VALUES('macro',?)").run(JSON.stringify(Object.assign({}, require('../src/db').DEFAULTS.macro, { updatedAt: iso(now - 2 * day) })));
+require('./demo-day')(db);
 console.log('Demo data ready: ' + outcomes.length + ' closed trades, 2 open, 1 new signal. Password: ' + process.env.APP_PASSWORD);
 const { app } = require('../src/server'); const port = process.env.PORT || 3000; app.listen(port, () => console.log('Demo running at http://localhost:' + port));

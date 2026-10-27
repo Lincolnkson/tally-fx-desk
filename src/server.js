@@ -27,7 +27,7 @@ app.post('/api/login', (req, res) => {
 });
 app.post('/api/logout', (q, res) => { res.setHeader('Set-Cookie', 'tally=; Path=/; Max-Age=0'); res.json({ ok: true }); });
 app.get('/api/me', (req, res) => res.json({ authed: authed(req), configured: !!(PASSWORD && SECRET) }));
-const ingestAuth = (req, res, next) => { if (!API_KEY) return res.status(503).json({ error: 'INGEST_API_KEY not set' }); if (!safeEq(req.headers['x-api-key'] || '', API_KEY)) return res.status(401).json({ error: 'Bad API key' }); next(); };
+const ingestAuth = (req, res, next) => { if (!API_KEY) return res.status(503).json({ error: 'INGEST_API_KEY not set' }); if (!safeEq(req.headers['x-api-key'] || req.headers['x-advisor-key'] || '', API_KEY)) return res.status(401).json({ error: 'Bad API key' }); next(); };
 const uiAuth = (req, res, next) => authed(req) ? next() : res.status(401).json({ error: 'Not signed in' });
 
 // ---------- live updates (server-sent events) ----------
@@ -75,10 +75,11 @@ const api = express.Router(); api.use(uiAuth); app.use('/api', api);
 const parse = r => { const o = { ...r }; ['vetoes', 'checklist'].forEach(k => { if (o[k]) try { o[k] = JSON.parse(o[k]); } catch (e) { } }); return o; };
 const need = (v, m) => { if (num(v) == null || num(v) <= 0) throw new Error(m); return Number(v); };
 const guard = f => (req, res) => { try { f(req, res); } catch (e) { res.status(400).json({ error: e.message }); } };
+const DT = require('./daytrade'); DT.mount({ ingest, api, addEvent, push, guard }); // day trading desk: /api/ingest/dt/* and /api/dt/*
 
 api.get('/state', (req, res) => {
   const brief = db.prepare('SELECT * FROM briefs ORDER BY id DESC LIMIT 1').get();
-  res.json({ unread: db.prepare('SELECT COUNT(*) c FROM events WHERE read=0').get().c, newSignals: db.prepare("SELECT COUNT(*) c FROM signals WHERE status='new'").get().c, openTrades: db.prepare("SELECT COUNT(*) c FROM trades WHERE status='OPEN'").get().c, breaker: A.breaker(), brief: brief ? { at: brief.at, regime: brief.regime, vix: brief.vix, pairs: JSON.parse(brief.payload) } : null, account: getSetting('account'), macroUpdatedAt: getSetting('macro').updatedAt });
+  res.json({ unread: db.prepare('SELECT COUNT(*) c FROM events WHERE read=0').get().c, newSignals: db.prepare("SELECT COUNT(*) c FROM signals WHERE status='new'").get().c, openTrades: db.prepare("SELECT COUNT(*) c FROM trades WHERE status='OPEN'").get().c, breaker: A.breaker(), day: DT.summary(), brief: brief ? { at: brief.at, regime: brief.regime, vix: brief.vix, pairs: JSON.parse(brief.payload) } : null, account: getSetting('account'), macroUpdatedAt: getSetting('macro').updatedAt });
 });
 api.get('/signals', (req, res) => { const st = req.query.status; const f = st && st !== 'all'; res.json(db.prepare('SELECT * FROM signals ' + (f ? 'WHERE status=? ' : '') + 'ORDER BY created_at DESC LIMIT 200').all(...(f ? [st] : [])).map(parse)); });
 api.post('/signals/:id/skip', (req, res) => { db.prepare("UPDATE signals SET status='skipped', skip_reason=? WHERE id=? AND status='new'").run((req.body && req.body.reason) || '', req.params.id); push('refresh', {}); res.json({ ok: true }); });
@@ -143,7 +144,7 @@ async function resolveShadows() {
   if (rows.length) push('refresh', { what: 'scorecard' });
 }
 
-app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h', setHeaders: (res, p) => { if (/(sw\.js|index\.html|app\.js|styles\.css)$/.test(p)) res.setHeader('Cache-Control', 'no-cache'); } }));
+app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h', setHeaders: (res, p) => { if (/(sw\.js|index\.html|app\.js|day\.js|styles\.css)$/.test(p)) res.setHeader('Cache-Control', 'no-cache'); } }));
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 if (require.main === module) {
   if (!PASSWORD || !SECRET || !API_KEY) console.error('WARNING: set APP_PASSWORD, SESSION_SECRET and INGEST_API_KEY. Sign-in and n8n ingestion are disabled until you do.');

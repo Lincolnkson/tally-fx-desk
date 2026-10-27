@@ -17,7 +17,7 @@ const cls = x => x > 0.005 ? 'gain' : (x < -0.005 ? 'loss' : '');
 const ago = iso => { if (!iso) return ''; const m = (Date.now() - Date.parse(iso)) / 60000; if (m < 1) return 'just now'; if (m < 60) return Math.round(m) + 'm ago'; if (m < 1440) return Math.round(m / 60) + 'h ago'; return Math.round(m / 1440) + 'd ago'; };
 const dshort = iso => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
 const toast = (t, err) => { const el = $('#toast'); el.textContent = t; el.className = 'show' + (err ? ' err' : ''); clearTimeout(toast.t); toast.t = setTimeout(() => el.className = '', 3400); };
-const ICON = { desk: '<path d="M4 5h7v8H4zM13 5h7v4h-7zM13 11h7v8h-7zM4 15h7v4H4z"/>', signals: '<path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8" fill="currentColor"/>', trades: '<path d="M4 7h16M4 12h16M4 17h10"/>', insights: '<path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-7"/>', lab: '<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/>', inbox: '<path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15zM10 21h4"/>', settings: '<circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/>', more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>' };
+const ICON = { day: '<path d="M7 3v4M7 16v5M17 3v7M17 17v4"/><rect x="4.5" y="7" width="5" height="9" rx="1"/><rect x="14.5" y="10" width="5" height="7" rx="1"/>', desk: '<path d="M4 5h7v8H4zM13 5h7v4h-7zM13 11h7v8h-7zM4 15h7v4H4z"/>', signals: '<path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8" fill="currentColor"/>', trades: '<path d="M4 7h16M4 12h16M4 17h10"/>', insights: '<path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-7"/>', lab: '<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/>', inbox: '<path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15zM10 21h4"/>', settings: '<circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/>', more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>' };
 const ic = n => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[n] + '</svg>';
 const MARK = '<svg viewBox="0 0 32 32" aria-hidden="true"><g stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M7 7v18M13 7v18M19 7v18M25 7v18"/></g><path d="M3 22L29 10" stroke="var(--gain)" stroke-width="3" stroke-linecap="round"/></svg>';
 
@@ -90,16 +90,16 @@ function showLogin() {
   $('#lf input').focus();
   $('#lf').onsubmit = async e => { e.preventDefault(); try { await api('POST', '/login', { password: e.target.password.value }); boot(); } catch (x) { $('#lerr').textContent = x.message; } };
 }
-const NAV = [['', 'desk', 'Desk'], ['signals', 'signals', 'Signals'], ['trades', 'trades', 'Trades'], ['insights', 'insights', 'Insights'], ['lab', 'lab', 'Lab'], ['inbox', 'inbox', 'Inbox'], ['settings', 'settings', 'Settings']];
+const NAV = [['', 'desk', 'Desk'], ['day', 'day', 'Day trading'], ['signals', 'signals', 'Signals'], ['trades', 'trades', 'Trades'], ['insights', 'insights', 'Insights'], ['lab', 'lab', 'Lab'], ['inbox', 'inbox', 'Inbox'], ['settings', 'settings', 'Settings']];
 function shell() {
-  const link = n => '<a href="#/' + n[0] + '" data-r="' + (n[0] || 'desk') + '">' + ic(n[1]) + '<span>' + n[2] + '</span>' + (n[1] === 'inbox' ? '<span class="badge" data-b="inbox" hidden></span>' : '') + (n[1] === 'signals' ? '<span class="badge blue" data-b="sig" hidden></span>' : '') + '</a>';
+  const link = n => '<a href="#/' + n[0] + '" data-r="' + (n[0] || 'desk') + '">' + ic(n[1]) + '<span>' + n[2] + '</span>' + (n[1] === 'inbox' ? '<span class="badge" data-b="inbox" hidden></span>' : '') + (n[1] === 'signals' ? '<span class="badge blue" data-b="sig" hidden></span>' : '') + (n[1] === 'day' ? '<span class="badge blue" data-b="dt" hidden></span>' : '') + '</a>';
   $('#app').innerHTML = '<div class="shell"><aside class="rail"><div class="brand">' + MARK + 'Tally</div><nav class="nav" aria-label="Main">' + NAV.map(link).join('') + '</nav><div class="foot"><button class="btn ghost sm" onclick="toggleTheme()">Switch theme</button></div></aside><main id="view" tabindex="-1"></main></div>'
     + '<nav class="tabbar" aria-label="Main">' + NAV.slice(0, 4).map(link).join('') + '<button id="more" data-r="more">' + ic('more') + '<span>More</span><span class="badge" data-b="inbox" hidden></span></button></nav>';
   $('#more').onclick = () => sheet('<h2>More</h2><div class="list">' + NAV.slice(4).map(n => '<a class="li" style="text-decoration:none;color:inherit" href="#/' + n[0] + '" onclick="closeSheet()"><span style="width:22px">' + ic(n[1]) + '</span><b class="grow">' + n[2] + '</b>' + (n[1] === 'inbox' && S.st && S.st.unread ? '<span class="badge">' + S.st.unread + '</span>' : '') + '</a>').join('') + '<div class="li"><button class="btn ghost sm" onclick="toggleTheme()">Switch theme</button></div></div>');
 }
 function toggleTheme() { const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light'); const n = cur === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = n; try { localStorage.setItem('tally-theme', n); } catch (e) { } }
 function badges() {
-  const s = S.st; if (!s) return; $$('[data-b]').forEach(el => { const n = el.dataset.b === 'inbox' ? s.unread : s.newSignals; el.hidden = !n; el.textContent = n; });
+  const s = S.st; if (!s) return; $$('[data-b]').forEach(el => { const n = el.dataset.b === 'inbox' ? s.unread : el.dataset.b === 'dt' ? (s.day ? s.day.armed : 0) : s.newSignals; el.hidden = !n; el.textContent = n; });
   document.title = (s.newSignals ? '(' + s.newSignals + ') ' : '') + 'Tally';
 }
 async function loadState() { S.st = await api('GET', '/state'); badges(); return S.st; }
@@ -114,7 +114,7 @@ const staleMacro = st => { const u = st.macroUpdatedAt; const d = u ? (Date.now(
 V.desk = async v => {
   const [st, sigs, open, stats] = await Promise.all([loadState(), api('GET', '/signals?status=new'), api('GET', '/trades?status=OPEN'), api('GET', '/stats')]);
   const s = stats.stats, b = st.breaker;
-  let h = head('Desk', st.brief ? 'Last brief ' + ago(st.brief.at) + '. Market mood ' + mood(st.brief.regime) + (st.brief.vix != null ? ', VIX ' + Number(st.brief.vix).toFixed(1) : '') + '.' : 'Waiting for the first brief from the advisor.') + breakerBanner(b) + staleMacro(st);
+  let h = head('Desk', st.brief ? 'Last brief ' + ago(st.brief.at) + '. Market mood ' + mood(st.brief.regime) + (st.brief.vix != null ? ', VIX ' + Number(st.brief.vix).toFixed(1) : '') + '.' : 'Waiting for the first brief from the advisor.') + breakerBanner(b) + staleMacro(st) + dayLink(st.day);
   h += '<div class="kpis"><div class="kpi"><span class="big">' + money(b.equity) + '</span><span class="lbl">Equity, ' + money(b.equity - st.account.startEquity, true) + ' since start</span></div>'
     + '<div class="kpi"><span class="big ' + cls(b.weekR) + '">' + rf(b.weekR, 1) + '</span><span class="lbl">This week, today ' + rf(b.dayR, 1) + '</span></div>'
     + '<div class="kpi"><span class="big">' + (s.n ? pc(s.winRate) : '–') + '</span><span class="lbl">Win rate over ' + s.n + ' trade' + (s.n === 1 ? '' : 's') + '</span></div>'
@@ -125,6 +125,7 @@ V.desk = async v => {
   if (st.brief && st.brief.pairs.length) h += '<section class="blk"><h2>Latest brief <span class="small muted">every pair the advisor checked</span></h2><div class="card list brief">' + st.brief.pairs.map(p => '<div class="li"><span class="pair" style="font-size:16px;width:78px">' + esc(p.pair) + '</span><span class="dir ' + esc(p.direction) + '">' + esc(p.direction) + '</span><span class="grow small muted">' + esc((p.vetoes && p.vetoes[0]) || p.strategy || '') + '</span><span class="pill ' + (p.decision === 'ENTER' ? 'gain' : p.decision === 'WATCH' ? 'warn' : '') + '">' + esc(p.decision) + (p.score != null ? ' ' + p.score : '') + '</span></div>').join('') + '</div></section>';
   v.innerHTML = h; bind(v);
 };
+const dayLink = d => d && (d.armed || d.open) ? '<a class="card row" href="#/day" style="text-decoration:none;color:inherit;margin:-8px 0 24px"><span style="width:22px">' + ic('day') + '</span><span class="grow"><b>Day trading:</b> ' + [d.armed ? d.armed + ' armed signal' + (d.armed > 1 ? 's' : '') : '', d.open ? d.open + ' open trade' + (d.open > 1 ? 's' : '') : ''].filter(Boolean).join(', ') + '</span><span class="pill blue">' + esc(String(d.state).replace('_', ' ').toLowerCase()) + '</span></a>' : '';
 function sigCard(x) {
   const ai = x.ai_verdict === 'REJECT' ? '<span class="pill loss">AI rejected</span>' : x.ai_verdict === 'REDUCE_SIZE' ? '<span class="pill warn">AI: smaller size</span>' : x.ai_verdict === 'APPROVE' ? '<span class="pill gain">AI approved</span>' : x.ai_verdict === 'UNREVIEWED' ? '<span class="pill">AI review failed</span>' : '';
   const entryNote = x.entry_type === 'stop' ? 'Enter on a break of ' + fp(x.pair, x.entry) + ' (stop order, cancel after 2 days)' : 'Enter near ' + fp(x.pair, x.entry);
@@ -250,11 +251,13 @@ function renderLab() {
   el.innerHTML = h;
 }
 
+V.day = (v, sub) => DayDesk.view(v, sub);
+
 V.inbox = async v => {
-  const ev = await api('GET', '/events'); const SEV = { alert: 'loss', action: 'warn', info: '' }; const LBL = { brief: 'Brief', signal: 'Signal', trade: 'Trade' };
-  v.innerHTML = head('Inbox', 'Messages from the advisor and the exit guardian', ev.some(e => !e.read) ? '<button class="btn ghost sm" id="rd">Mark all read</button>' : '') + (ev.length ? '<div class="card list">' + ev.map(e => '<div class="li' + (e.trade_id || e.signal_id ? ' click' : '') + '" data-t="' + (e.trade_id || '') + '" data-s="' + (e.signal_id || '') + '" style="align-items:flex-start"><span class="pill ' + SEV[e.severity] + '" style="margin-top:2px;min-width:58px;text-align:center">' + (LBL[e.type] || e.type) + '</span><div class="grow"><div' + (e.read ? '' : ' style="font-weight:700"') + '>' + esc(e.title) + '</div>' + (e.body ? '<div class="small muted notes">' + esc(e.body) + '</div>' : '') + '</div><span class="tiny muted" style="white-space:nowrap">' + ago(e.at) + '</span></div>').join('') + '</div>' : '<div class="empty">Nothing yet. Daily briefs, new signals and trade alerts from n8n land here.</div>');
+  const ev = await api('GET', '/events'); const SEV = { alert: 'loss', action: 'warn', info: '' }; const LBL = { brief: 'Brief', signal: 'Signal', trade: 'Trade', day: 'Day trade' };
+  v.innerHTML = head('Inbox', 'Messages from the advisor and the exit guardian', ev.some(e => !e.read) ? '<button class="btn ghost sm" id="rd">Mark all read</button>' : '') + (ev.length ? '<div class="card list">' + ev.map(e => '<div class="li' + (e.trade_id || e.signal_id || e.type === 'day' ? ' click' : '') + '" data-t="' + (e.trade_id || '') + '" data-s="' + (e.signal_id || '') + '" data-k="' + esc(e.type) + '" style="align-items:flex-start"><span class="pill ' + SEV[e.severity] + '" style="margin-top:2px;min-width:58px;text-align:center">' + (LBL[e.type] || e.type) + '</span><div class="grow"><div' + (e.read ? '' : ' style="font-weight:700"') + '>' + esc(e.title) + '</div>' + (e.body ? '<div class="small muted notes">' + esc(e.body) + '</div>' : '') + '</div><span class="tiny muted" style="white-space:nowrap">' + ago(e.at) + '</span></div>').join('') + '</div>' : '<div class="empty">Nothing yet. Daily briefs, new signals and trade alerts from n8n land here.</div>');
   const rd = $('#rd', v); if (rd) rd.onclick = () => api('POST', '/events/read').then(() => { loadState(); route(); });
-  $$('[data-t]', v).forEach(r => r.onclick = () => { if (r.dataset.t) tradeSheet(+r.dataset.t); else if (r.dataset.s) { S.sigFilter = 'all'; location.hash = '#/signals'; } });
+  $$('[data-t]', v).forEach(r => r.onclick = () => { if (r.dataset.k === 'day') location.hash = '#/day'; else if (r.dataset.t) tradeSheet(+r.dataset.t); else if (r.dataset.s) { S.sigFilter = 'all'; location.hash = '#/signals'; } });
   if (ev.some(e => !e.read)) setTimeout(() => api('POST', '/events/read').then(loadState).catch(() => { }), 2500);
 };
 
@@ -279,14 +282,14 @@ V.settings = async v => {
 /* ---------- router, live updates, boot ---------- */
 async function route() {
   const [name, id] = location.hash.replace(/^#\/?/, '').split('/'); const key = V[name] ? name : 'desk';
-  $$('[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === key || (a.dataset.r === 'more' && ['lab', 'inbox', 'settings'].includes(key))));
+  $$('[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === key || (a.dataset.r === 'more' && ['insights', 'lab', 'inbox', 'settings'].includes(key))));
   const v = $('#view'); if (!v) return; if (S.route !== key) { v.innerHTML = '<div class="empty"><span class="spin"></span></div>'; S.route = key; window.scrollTo(0, 0); }
   try { await V[key](v, id); } catch (e) { if (e.message !== 'Signed out') v.innerHTML = '<div class="empty">' + esc(e.message) + '. <button class="btn ghost sm" onclick="route()">Try again</button></div>'; }
 }
 function live() {
   if (window.es) window.es.close(); const es = window.es = new EventSource('/api/stream');
   es.addEventListener('event', e => { const d = JSON.parse(e.data); if (d.severity !== 'info') toast(d.title); loadState().catch(() => { }); });
-  let t; es.addEventListener('refresh', () => { clearTimeout(t); t = setTimeout(() => { if (!dlg().open && S.route !== 'lab' && S.route !== 'settings') route(); else loadState().catch(() => { }); }, 400); });
+  let t; es.addEventListener('refresh', () => { clearTimeout(t); t = setTimeout(() => { if (!dlg().open && S.route !== 'lab' && S.route !== 'settings' && !(S.route === 'day' && DayDesk.isSetup())) route(); else loadState().catch(() => { }); }, 400); });
 }
 async function boot() {
   try { const th = localStorage.getItem('tally-theme'); if (th) document.documentElement.dataset.theme = th; } catch (e) { }

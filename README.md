@@ -1,6 +1,6 @@
 # Tally
 
-A trade desk for the n8n **Forex Confluence Advisor**. The advisor posts its daily brief and trade signals here instead of Telegram; you log what you actually did; Tally measures how the advisor and you are doing, and lets you replay the strategy over past prices.
+A trade desk for the n8n **Forex Confluence Advisor** and the intraday **Day Trading Advisor**. The advisor posts its daily brief and trade signals here instead of Telegram; you log what you actually did; Tally measures how the advisor and you are doing, and lets you replay the strategy over past prices.
 
 Works on desktop and phone, and installs to the home screen as an app.
 
@@ -8,6 +8,7 @@ Works on desktop and phone, and installs to the home screen as an app.
 
 | Screen | What you get |
 | --- | --- |
+| **Day trading** | The intraday desk, run by the [Day Trading Advisor Rulebook](docs/day-trading-rulebook.md). Board of armed and open signals with countdowns, SAST session times and news blackouts, "why no signal?" log, journal of every signal (alerted, shadow, blocked), stats in R for you and the advisor, strategy stages with promotion gates, the live rules, and a morning readiness check. |
 | **Desk** | Today's signals with a score breakdown and a stop/entry/target ruler, open trades showing where price sits in R, equity, win rate, this week's result, and the full daily brief. |
 | **Signals** | Every signal the advisor ever sent, taken or not, with what it would have made if followed exactly. |
 | **Trades** | Your journal: fills, partial profits, trailing stops, notes, tags, a pre-trade checklist, CSV export. |
@@ -22,6 +23,30 @@ Ideas beyond the brief:
 - **Circuit breakers.** Daily and weekly loss limits in R, a losing-streak pause and an open-risk cap. When one trips, the Desk tells you to stand aside and the advisor stops posting signals.
 - **Discipline tracking.** When you close a trade you say whether you followed the plan; Insights compares the two.
 - **One engine.** The backtester and shadow tracker use the same scoring and exit rules as the n8n workflows.
+
+## Day trading desk
+
+Built from two files that ship in this repo: the rulebook ([docs/day-trading-rulebook.md](docs/day-trading-rulebook.md)) and its machine-readable values ([config/day_trading_rules.json](config/day_trading_rules.json)). n8n computes every signal; Tally gates, journals and measures.
+
+- **Rule gate.** Every signal n8n posts is re-checked: stop side (H2), stage risk limit (H3), costs (H6), reward to risk from prices (H7), exposure and correlation groups (H10), strategy stage (H16) and grade (G3). The reply tells n8n whether it alerted, stayed a shadow, was logged or was blocked, and why.
+- **Circuit breakers.** Daily loss, losing streaks with cooldown and A+-only, trade counts, profit protection, weekly half-risk, peak drawdown, and the strategy kill switch (C1–C7). A lock has to be acknowledged before the next session alerts (C11).
+- **Readiness.** Until the three morning questions are answered "yes", the desk is observe-only (C9).
+- **Stages.** Each strategy sits in Research, Paper, Micro-live, Live or Disabled. Only Paper and Live stages alert, each with its own risk limit. Start everything in Research and promote it once the backtest gate passes.
+- **Two scorecards.** Your actual results and the advisor's plan outcomes, both in R, with adherence, execution gap, edge ratio and segments by strategy, grade, regime, session, instrument, weekday and volume source.
+
+| Call (header `x-api-key`) | Purpose |
+| --- | --- |
+| `GET /api/ingest/dt/context` | State, equity in ZAR, stage risk, strategy stages, open positions, breakers, open sessions |
+| `GET /api/ingest/dt/config` | The rules file with effective stages |
+| `POST /api/ingest/dt/signals` | One O1 signal (rulebook section 12); returns `gate`, `alerted`, `reasons` |
+| `PATCH /api/ingest/dt/signals/{signal_id}` | O3 management update; stops only tighten; send `result_r` with `status: CLOSED` |
+| `GET /api/ingest/dt/active` | Armed and active signals for the trade manager |
+| `POST /api/ingest/dt/decisions` | O2 no-trade decisions |
+| `POST /api/ingest/dt/advisor-state` | `{ state, reason, until }` |
+| `POST /api/ingest/dt/calendar` | `{ events: [{ at, ccy, impact, title }] }` for blackout windows |
+| `GET /api/ingest/dt/stats` | Metrics and stages for the nightly review |
+
+Optionally set an n8n Webhook URL in **Day trading → Setup**; Tally then posts `signal.taken`, `signal.skipped`, `trade.closed`, `readiness.submitted`, `lock.acknowledged` and `trade.off_plan` with the same `x-api-key`.
 
 ## Run it locally
 
