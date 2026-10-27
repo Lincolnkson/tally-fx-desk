@@ -43,6 +43,8 @@ const O1 = (o = {}) => Object.assign({
   const ok = await call('POST', '/api/ingest/dt/signals', O1({ signal_id: 'live-1' }), K); assert.equal(ok.j.gate, 'ALERT', JSON.stringify(ok.j)); assert.equal(ok.j.alerted, true);
   // H10: second signal on the same instrument or the same correlation group is blocked while the first is armed/open
   assert.ok((await call('POST', '/api/ingest/dt/signals', O1({ signal_id: 'dup-inst' }), K)).j.reasons.includes('EXPOSURE_CAP'));
+  const act = (await call('GET', '/api/ingest/dt/active', null, K)).j; assert.ok(act.find(x => x.signal_id === 'live-1' && x.created_at && x.entry_type === 'limit' && x.cost_r === 0.04), 'active has replay fields');
+  const c2 = (await call('GET', '/api/ingest/dt/context', null, K)).j; assert.ok(c2.today_signals.length >= 5 && Array.isArray(c2.blackouts), 'context has today_signals and blackouts');
   let board = (await call('GET', '/api/dt/signals?view=board')).j; assert.equal(board.length, 1); assert.equal(board[0].rr, 2);
   assert.equal((await call('GET', '/api/state')).j.day.armed, 1);
   // take it, partial at T1, close the rest at T2

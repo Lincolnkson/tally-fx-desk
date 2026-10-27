@@ -271,7 +271,9 @@ function mount({ ingest, api, addEvent, push, guard }) {
     return { rulebook_version: CFG.rulebook_version, now: nowIso(), sast_day: dayKey(), equity_zar: Math.round(equity(st)), advisor_state: A.state, alerts_enabled: A.alertsEnabled, a_plus_only: A.aPlusOnly, reasons: A.reasons,
       risk_multiplier: A.riskMult, risk_pct_by_stage: CFG.risk.K1_risk_pct_by_stage, strategies: st.strategies, alerting_stages: ALERT_STAGES, tier2_enabled: st.tier2Enabled,
       readiness: A.readiness ? { done: true, ok: A.readiness.ok } : { done: false, ok: false }, breakers: { day_r: +A.breakers.dayR.toFixed(2), week_r: +A.breakers.weekR.toFixed(2), last_week_r: +A.breakers.lastWeekR.toFixed(2), loss_streak: A.breakers.lossStreak, trades_today: A.breakers.tradesToday, per_instrument: A.breakers.perInstrument, drawdown_r: +A.breakers.ddR.toFixed(2), codes: A.breakers.codes },
-      open_positions: ex, open_risk_pct: +ex.reduce((a, x) => a + (x.risk_pct || 0), 0).toFixed(3), armed: db.prepare("SELECT signal_id, instrument, strategy_id FROM dt_signals WHERE gate='ALERT' AND status='ARMED' AND user_action IS NULL").all(), sessions_open: sessions().openNow, blackouts_active: blackouts().filter(b => b.active).map(b => ({ ccy: b.ccy, title: b.title, until: b.end })) };
+      open_positions: ex, open_risk_pct: +ex.reduce((a, x) => a + (x.risk_pct || 0), 0).toFixed(3), armed: db.prepare("SELECT signal_id, instrument, strategy_id FROM dt_signals WHERE gate='ALERT' AND status='ARMED' AND user_action IS NULL").all(), sessions_open: sessions().openNow, blackouts_active: blackouts().filter(b => b.active).map(b => ({ ccy: b.ccy, title: b.title, until: b.end })),
+      blackouts: blackouts().map(b => ({ at: b.at, ccy: b.ccy, impact: b.impact, kind: b.kind, title: b.title, start: b.start, end: b.end, active: b.active })),
+      today_signals: db.prepare('SELECT signal_id, created_at, instrument, strategy_id, direction, gate, status, user_action, plan_r, plan_exit_reason, plan_closed_at FROM dt_signals WHERE created_at >= ? AND source=? ORDER BY created_at').all(new Date(zonedUtc(dayKey(), '00:00', TZ)).toISOString(), 'advisor') };
   };
 
   // --- n8n → Tally ---
@@ -301,7 +303,7 @@ function mount({ ingest, api, addEvent, push, guard }) {
     if (resolved && planR != null) killSwitch(s.strategy_id, addEvent);
     refresh(); res.json({ ok: true, status, cur_stop: cur, stop_ignored: stopIgnored });
   });
-  ingest.get('/dt/active', (req, res) => res.json(db.prepare("SELECT signal_id, instrument, direction, strategy_id, status, gate, entry, stop, cur_stop, targets, valid_until, flat_by, user_action, act_entry, act_size, units_left FROM dt_signals WHERE status IN ('ARMED','ACTIVE','PARTIAL') ORDER BY created_at").all().map(r => ({ ...r, targets: J(r.targets, []) }))));
+  ingest.get('/dt/active', (req, res) => res.json(db.prepare("SELECT signal_id, created_at, instrument, direction, strategy_id, status, gate, entry_type, entry, stop, cur_stop, targets, cost_r, rr, valid_until, flat_by, plan_mfe, plan_mae, session, user_action, act_entry, act_size, units_left FROM dt_signals WHERE status IN ('ARMED','ACTIVE','PARTIAL') ORDER BY created_at").all().map(r => ({ ...r, targets: J(r.targets, []) }))));
   ingest.post('/dt/decisions', (req, res) => {
     const list = Array.isArray(req.body) ? req.body : Array.isArray(req.body.decisions) ? req.body.decisions : [req.body]; const ins = db.prepare('INSERT INTO dt_decisions(at,instrument,regime,reasons,payload) VALUES(?,?,?,?,?)');
     let n = 0; db.transaction(() => list.forEach(d => { if (!d || !d.instrument) return; ins.run(d.evaluated_at || nowIso(), String(d.instrument).toUpperCase(), (d.regime && (d.regime.label || d.regime)) || null, JSON.stringify(d.reason_codes || []), JSON.stringify(d)); n++; }))();
