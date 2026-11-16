@@ -48,6 +48,22 @@ Built from two files that ship in this repo: the rulebook ([docs/day-trading-rul
 
 Optionally set an n8n Webhook URL in **Day trading → Setup**; Tally then posts `signal.taken`, `signal.skipped`, `trade.closed`, `readiness.submitted`, `lock.acknowledged` and `trade.off_plan` with the same `x-api-key`.
 
+## Strategy Lab
+
+Tally > Strategy Lab searches for better forex swing rules and refuses to propose anything that does not survive testing on data it never saw.
+
+- **Recipes.** A strategy is a flat set of choices (`src/lab/recipe.js`): setup, trigger, trend, interest-rate, currency-strength and market-mood filters, stop, targets and time limit. The lab tunes settings and invents new combinations by mutating the best recipes over several rounds.
+- **Data.** About 18 years of daily candles for 7 majors and 10 crosses (Yahoo) and monthly 3-month and 10-year rates for the eight currencies (FRED), used two months late, as published. Bad ticks are cleaned before anything is tested.
+- **Costs.** Each pair's spread, half a pip of slippage and overnight financing. Entry is the next day's open; inside a day the stop is assumed to be hit before a target.
+- **Your rules.** Win rate of 50% or more, average win at least 0.8 of the average loss, positive expectancy after costs.
+- **Reality check.** The whole search is repeated on past windows and each winner is traded on the two years after it. The page shows the gap between how winners looked when chosen and how they did afterwards.
+- **Final exam.** The last two years are locked away. Only the single best recipe is tested on them, once per run. Twelve checks must all pass (win rate, payoff, expectancy, sample, years, walk-forward, locked-away data, reshuffle luck test, random-entry test, market conditions, both directions, better than what is in use).
+- **Approval.** A recipe that passes waits for you. Nothing reaches the advisor until you approve it; a recipe that failed can only be paper-traded. You can also pause the original rules.
+- **Fortnightly.** The n8n workflow "Strategy Lab Re-test (fortnightly)" calls `POST /api/ingest/lab/run` on the 1st and 15th. Each run re-tests whatever is in use and alerts the inbox if it has stopped working.
+- **Advisor hook.** The Forex Confluence Advisor asks `GET /api/ingest/lab/signals` on every run. Signals from an approved recipe carry their own exit plan, which the Exit Guardian and the scorecard follow.
+
+`npm test` includes a negative control: on a pure random walk the lab must propose nothing.
+
 ## Run it locally
 
 ```bash
