@@ -16,9 +16,14 @@ CREATE TABLE IF NOT EXISTS fills (id INTEGER PRIMARY KEY, trade_id INTEGER REFER
 CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, at TEXT, type TEXT, severity TEXT, title TEXT, body TEXT, trade_id INTEGER, signal_id INTEGER, read INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS briefs (id INTEGER PRIMARY KEY, at TEXT, regime TEXT, vix REAL, payload TEXT);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS lab_runs (id INTEGER PRIMARY KEY, at TEXT, by TEXT, status TEXT, summary TEXT, result TEXT);
+CREATE TABLE IF NOT EXISTS lab_strategies (id INTEGER PRIMARY KEY, key TEXT, name TEXT, status TEXT, recipe TEXT, report TEXT, health TEXT, created_at TEXT, decided_at TEXT, retired_at TEXT, run_id INTEGER, note TEXT);
 CREATE INDEX IF NOT EXISTS idx_trades_status ON trades(status); CREATE INDEX IF NOT EXISTS idx_signals_status ON signals(status); CREATE INDEX IF NOT EXISTS idx_events_read ON events(read);
 `);
+// columns added after the first release
+[['signals', 'plan', 'TEXT'], ['signals', 'q_usd', 'REAL'], ['trades', 'plan', 'TEXT'], ['trades', 'q_usd', 'REAL']].forEach(([tb, col, type]) => { if (!db.prepare('PRAGMA table_info(' + tb + ')').all().some(c => c.name === col)) db.exec('ALTER TABLE ' + tb + ' ADD COLUMN ' + col + ' ' + type); });
 const DEFAULTS = {
+  lab: { pauseLegacy: false },
   account: { startEquity: 10000, riskPct: 1, tzOffset: 2 },
   limits: { maxDailyLossR: 2, maxWeeklyLossR: 4, maxOpenRiskPct: 3, maxLossStreak: 3 },
   macro: {
@@ -34,5 +39,6 @@ const getSetting = k => { const r = db.prepare('SELECT value FROM settings WHERE
 const setSetting = (k, v) => db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(k, JSON.stringify(v));
 const nowIso = () => new Date().toISOString();
 // Profit in USD for a move from entry to price on `units` of the base currency.
-function pnlUsd(pair, dir, entry, price, units) { const d = (dir === 'LONG' ? 1 : -1) * (price - entry) * units; return pair.endsWith('USD') ? d : d / price; }
+// qUsd: dollars per one unit of the quote currency when the trade was opened (needed for crosses such as EURGBP).
+function pnlUsd(pair, dir, entry, price, units, qUsd) { const d = (dir === 'LONG' ? 1 : -1) * (price - entry) * units; return pair.endsWith('USD') ? d : (pair.startsWith('USD') || !qUsd ? d / price : d * qUsd); }
 module.exports = { db, getSetting, setSetting, nowIso, pnlUsd, DEFAULTS, dir };

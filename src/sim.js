@@ -124,4 +124,12 @@ async function runBacktest(opts, candles) {
     byPair: groupStats(main.trades, t => t.pair), byStrategy: groupStats(main.trades, t => t.strategy), byRegime: groupStats(main.trades, t => t.regime)
   };
 }
-module.exports = { simulateTrade, runBacktest, PAIRS, pipSize };
+// Every trade of the advisor's strategy over a long history (used by the Strategy Lab as the baseline).
+async function walkAll(o, candles) {
+  const pairs = Object.keys(PAIRS); const macro = JSON.parse(JSON.stringify(o.macro)); macro.settings = Object.assign({ minRR: 2, eventBlockHours: 24 }, macro.settings);
+  const [vix, spx, ...pairData] = await Promise.all([candles('^VIX').catch(() => null), candles('^GSPC').catch(() => null), ...pairs.map(p => candles(p + '=X'))]);
+  const regimeAt = gaugeReader(vix, spx); const lastT = pairData[0].bars[pairData[0].bars.length - 1].t; const startTs = lastT - o.years * 365.25 * 86400;
+  const pcs = pairData.map((d, i) => precompute(pairs[i], d.bars, regimeAt, macro, o.fundMode || 'off', startTs));
+  return portfolio([].concat(...pcs.map(pc => walk(pc, o.minScore, o.costPips))), { maxConcurrent: o.maxConcurrent || 4, startEquity: 10000, riskPct: 1, compound: false }).trades;
+}
+module.exports = { simulateTrade, runBacktest, walkAll, PAIRS, pipSize };

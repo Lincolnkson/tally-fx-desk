@@ -59,7 +59,7 @@ dialog{border:1px solid var(--rule);border-radius:14px;background:var(--paper);c
 @media (min-width:861px){#toast{bottom:28px}}
 .login{min-height:100vh;display:grid;place-items:center;padding:20px}.login form{width:min(360px,100%)}.login .brand{padding:0 0 18px;font-size:36px}.login .brand svg{width:40px;height:40px}
 .warnbox{border:1px solid var(--ochre);background:var(--ochre-bg);border-radius:var(--r);padding:11px 14px;font-size:13px;margin-top:6px}
-.tonebar{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:0 0 12px;max-width:72ch}.tonebar.good{border-color:var(--gain)}.tonebar.warn{border-color:var(--ochre)}
+.tonebar{border-left:3px solid var(--muted);padding:2px 0 2px 12px;margin:0 0 12px;max-width:72ch}.tonebar.good{border-color:var(--gain)}.tonebar.bad{border-color:var(--loss)}.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.tonebar.warn{border-color:var(--ochre)}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--rule);border-top-color:var(--ink);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}@keyframes sp{to{transform:rotate(1turn)}}
 .stat{font-size:26px;line-height:1.15}
 /* day trading desk */

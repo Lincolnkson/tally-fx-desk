@@ -41,7 +41,7 @@ function addEvent(type, severity, title, body, tradeId, signalId) { const id = d
 const num = v => (v == null || v === '' || isNaN(Number(v))) ? null : Number(v);
 const ingest = express.Router(); ingest.use(ingestAuth); app.use('/api/ingest', ingest);
 ingest.get('/macro', (req, res) => { const m = getSetting('macro'), a = getSetting('account'); res.json({ settings: { accountUsd: A.exposure().equity, riskPct: a.riskPct, minScore: m.settings.minScore, minRR: m.settings.minRR, eventBlockHours: m.settings.eventBlockHours }, rates: m.rates, stance: m.stance, cb: m.cb, riskCcy: m.riskCcy, standAside: A.breaker().tripped }); });
-ingest.get('/open-trades', (req, res) => res.json(db.prepare("SELECT id, pair, ticker, direction, entry, stop, trail_stop AS trailStop, t1 AS target1, t2 AS target2, last_action AS lastAction, opened_at AS signalDate, units_left AS units FROM trades WHERE status='OPEN'").all()));
+ingest.get('/open-trades', (req, res) => res.json(db.prepare("SELECT id, pair, ticker, direction, entry, stop, trail_stop AS trailStop, t1 AS target1, t2 AS target2, last_action AS lastAction, opened_at AS signalDate, units_left AS units, plan FROM trades WHERE status='OPEN'").all().map(t => Object.assign(t, { plan: t.plan ? JSON.parse(t.plan) : null }))));
 ingest.post('/brief', (req, res) => {
   const b = req.body || {}; const pairs = Array.isArray(b.pairs) ? b.pairs : []; const c = k => pairs.filter(p => p.decision === k).length;
   db.prepare('INSERT INTO briefs(at,regime,vix,payload) VALUES(?,?,?,?)').run(b.runAt || nowIso(), b.regime || null, num(b.vix), JSON.stringify(pairs));
@@ -52,8 +52,8 @@ ingest.post('/signal', (req, res) => {
   const s = req.body || {}; if (!s.pair || !s.direction || num(s.entry) == null || num(s.stop) == null) return res.status(400).json({ error: 'pair, direction, entry and stop are required' });
   const sid = s.signalId || (s.pair + '-' + String(s.signalDate || nowIso()).slice(0, 10)); const ex = db.prepare('SELECT id FROM signals WHERE signal_id=?').get(sid); if (ex) return res.json({ ok: true, duplicate: true, id: ex.id });
   const atr = num(s.atr) || 0, price = num(s.price) != null ? num(s.price) : num(s.entry); const entryType = s.entryType || (Math.abs(num(s.entry) - price) < 0.15 * (atr || 1e-9) ? 'market' : 'stop'); const rejected = s.aiVerdict === 'REJECT';
-  const vals = [sid, s.signalDate || nowIso(), s.pair, s.ticker || s.pair + '=X', s.direction, s.strategy, num(s.score), s.breakdown, num(s.entry), num(s.stop), num(s.target1), num(s.target2), num(s.rr), atr, price, entryType, num(s.units), num(s.riskUsd), s.aiVerdict, num(s.aiConfidence), num(s.sizeMultiplier), s.thesis, s.keyRisk, s.invalidation, s.regime, num(s.vix), JSON.stringify(s.vetoes || []), rejected ? 'rejected' : 'new'];
-  const id = db.prepare('INSERT INTO signals(signal_id,created_at,pair,ticker,direction,strategy,score,breakdown,entry,stop,t1,t2,rr,atr,price,entry_type,units,risk_usd,ai_verdict,ai_conf,size_mult,thesis,key_risk,invalidation,regime,vix,vetoes,status) VALUES(' + vals.map(() => '?').join(',') + ')').run(...vals).lastInsertRowid;
+  const vals = [sid, s.signalDate || nowIso(), s.pair, s.ticker || s.pair + '=X', s.direction, s.strategy, num(s.score), s.breakdown, num(s.entry), num(s.stop), num(s.target1), num(s.target2), num(s.rr), atr, price, entryType, num(s.units), num(s.riskUsd), s.aiVerdict, num(s.aiConfidence), num(s.sizeMultiplier), s.thesis, s.keyRisk, s.invalidation, s.regime, num(s.vix), JSON.stringify(s.vetoes || []), rejected ? 'rejected' : 'new', s.plan ? JSON.stringify(s.plan) : null, num(s.qUsd)];
+  const id = db.prepare('INSERT INTO signals(signal_id,created_at,pair,ticker,direction,strategy,score,breakdown,entry,stop,t1,t2,rr,atr,price,entry_type,units,risk_usd,ai_verdict,ai_conf,size_mult,thesis,key_risk,invalidation,regime,vix,vetoes,status,plan,q_usd) VALUES(' + vals.map(() => '?').join(',') + ')').run(...vals).lastInsertRowid;
   addEvent('signal', rejected ? 'info' : 'action', s.pair + ' ' + s.direction + ' signal, score ' + s.score + (rejected ? ' (AI rejected)' : ''), s.thesis || '', null, id); push('refresh', { what: 'signals' }); res.json({ ok: true, id });
 });
 ingest.post('/guardian', (req, res) => {
@@ -75,7 +75,8 @@ const api = express.Router(); api.use(uiAuth); app.use('/api', api);
 const parse = r => { const o = { ...r }; ['vetoes', 'checklist'].forEach(k => { if (o[k]) try { o[k] = JSON.parse(o[k]); } catch (e) { } }); return o; };
 const need = (v, m) => { if (num(v) == null || num(v) <= 0) throw new Error(m); return Number(v); };
 const guard = f => (req, res) => { try { f(req, res); } catch (e) { res.status(400).json({ error: e.message }); } };
-const DT = require('./daytrade'); DT.mount({ ingest, api, addEvent, push, guard }); // day trading desk: /api/ingest/dt/* and /api/dt/*
+const DT = require('./daytrade'); DT.mount({ ingest, api, addEvent, push, guard });
+const LAB = require('./lab/service').mount({ ingest, api, addEvent, push, guard, runner: global.__labRunner }); // Strategy Lab: /api/strategy-lab/* and /api/ingest/lab/* // day trading desk: /api/ingest/dt/* and /api/dt/*
 
 api.get('/state', (req, res) => {
   const brief = db.prepare('SELECT * FROM briefs ORDER BY id DESC LIMIT 1').get();
@@ -86,13 +87,13 @@ api.post('/signals/:id/skip', (req, res) => { db.prepare("UPDATE signals SET sta
 function openTrade(o) {
   const dir = o.direction === 'LONG' ? 1 : -1; const R = Math.abs(o.entry - o.stop); if (!(R > 0)) throw new Error('Entry and stop must differ');
   if (dir === 1 ? o.stop >= o.entry : o.stop <= o.entry) throw new Error('The stop is on the wrong side of the entry for a ' + o.direction.toLowerCase());
-  const id = db.prepare('INSERT INTO trades(signal_id,pair,ticker,direction,strategy,score,regime,ai_verdict,opened_at,entry,stop,t1,t2,t1_r,t2_r,units,units_left,notes,tags,checklist) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
-    .run(o.signal_id || null, o.pair, o.ticker || o.pair + '=X', o.direction, o.strategy || 'Manual', o.score || null, o.regime || null, o.ai_verdict || null, o.opened_at || nowIso(), o.entry, o.stop, o.t1 || null, o.t2 || null, o.t1 ? dir * (o.t1 - o.entry) / R : null, o.t2 ? dir * (o.t2 - o.entry) / R : null, o.units, o.units, o.notes || '', o.tags || '', JSON.stringify(o.checklist || {})).lastInsertRowid;
+  const id = db.prepare('INSERT INTO trades(signal_id,pair,ticker,direction,strategy,score,regime,ai_verdict,opened_at,entry,stop,t1,t2,t1_r,t2_r,units,units_left,notes,tags,checklist,plan,q_usd) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+    .run(o.signal_id || null, o.pair, o.ticker || o.pair + '=X', o.direction, o.strategy || 'Manual', o.score || null, o.regime || null, o.ai_verdict || null, o.opened_at || nowIso(), o.entry, o.stop, o.t1 || null, o.t2 || null, o.t1 ? dir * (o.t1 - o.entry) / R : null, o.t2 ? dir * (o.t2 - o.entry) / R : null, o.units, o.units, o.notes || '', o.tags || '', JSON.stringify(o.checklist || {}), o.plan || null, o.q_usd || null).lastInsertRowid;
   db.prepare("INSERT INTO fills(trade_id,at,kind,price,units,pnl_usd,r_part,note) VALUES(?,?,'entry',?,?,0,0,'Opened')").run(id, o.opened_at || nowIso(), o.entry, o.units); return id;
 }
 api.post('/signals/:id/take', guard((req, res) => {
   const s = db.prepare('SELECT * FROM signals WHERE id=?').get(req.params.id); if (!s) throw new Error('Signal not found'); if (s.status === 'taken') throw new Error('You already logged this signal');
-  const b = req.body || {}; const id = openTrade({ signal_id: s.id, pair: s.pair, ticker: s.ticker, direction: s.direction, strategy: s.strategy, score: s.score, regime: s.regime, ai_verdict: s.ai_verdict, entry: need(b.fillPrice, 'Enter your fill price'), stop: need(b.stop || s.stop, 'A stop is required'), t1: s.t1, t2: s.t2, units: need(b.units || s.units, 'Enter the position size in units'), notes: b.notes, checklist: b.checklist });
+  const b = req.body || {}; const id = openTrade({ signal_id: s.id, pair: s.pair, ticker: s.ticker, direction: s.direction, strategy: s.strategy, score: s.score, regime: s.regime, ai_verdict: s.ai_verdict, plan: s.plan, q_usd: s.q_usd, entry: need(b.fillPrice, 'Enter your fill price'), stop: need(b.stop || s.stop, 'A stop is required'), t1: s.t1, t2: s.t2, units: need(b.units || s.units, 'Enter the position size in units'), notes: b.notes, checklist: b.checklist });
   db.prepare("UPDATE signals SET status='taken', trade_id=? WHERE id=?").run(id, s.id); push('refresh', {}); res.json({ ok: true, tradeId: id });
 }));
 api.post('/trades', guard((req, res) => { const b = req.body || {}; if (!PAIRS[b.pair]) throw new Error('Unknown pair'); const id = openTrade({ pair: b.pair, direction: b.direction === 'SHORT' ? 'SHORT' : 'LONG', entry: need(b.entry, 'Entry is required'), stop: need(b.stop, 'Stop is required'), t1: num(b.t1), t2: num(b.t2), units: need(b.units, 'Units are required'), notes: b.notes, strategy: 'Manual' }); push('refresh', {}); res.json({ ok: true, tradeId: id }); }));
@@ -100,7 +101,7 @@ api.get('/trades', (req, res) => { const st = req.query.status; res.json(db.prep
 api.get('/trades/:id', (req, res) => { const t = db.prepare('SELECT * FROM trades WHERE id=?').get(req.params.id); if (!t) return res.status(404).json({ error: 'Trade not found' }); const o = parse(t); o.fills = db.prepare('SELECT * FROM fills WHERE trade_id=? ORDER BY id').all(t.id); o.curStop = A.curStop(t); res.json(o); });
 function fill(t, kind, price, units, note, reason, followed) {
   units = Math.min(units, t.units_left); const dir = t.direction === 'LONG' ? 1 : -1; const R = Math.abs(t.entry - t.stop); const rAt = dir * (price - t.entry) / R;
-  const pnl = pnlUsd(t.pair, t.direction, t.entry, price, units), rPart = rAt * (units / t.units);
+  const pnl = pnlUsd(t.pair, t.direction, t.entry, price, units, t.q_usd), rPart = rAt * (units / t.units);
   db.prepare('INSERT INTO fills(trade_id,at,kind,price,units,pnl_usd,r_part,note) VALUES(?,?,?,?,?,?,?,?)').run(t.id, nowIso(), kind, price, units, pnl, rPart, note || '');
   const left = t.units_left - units; const close = left <= 1e-9 || kind === 'exit';
   db.prepare('UPDATE trades SET units_left=?, pnl_usd=pnl_usd+?, r=r+?, mfe_r=MAX(mfe_r,?), mae_r=MIN(mae_r,?) WHERE id=?').run(close ? 0 : left, pnl, rPart, rAt, rAt, t.id);
@@ -136,6 +137,11 @@ async function resolveShadows() {
       const { bars } = await candles(s.ticker, '6mo'); const atrA = wilder(trueRange(bars), 14); const day = s.created_at.slice(0, 10);
       let idx = -1; bars.forEach((b, i) => { if (new Date(b.t * 1000).toISOString().slice(0, 10) <= day) idx = i; }); if (idx < 0) continue;
       const expired = bars.length - 1 - idx >= 22; const plan = { dir: s.direction === 'LONG' ? 1 : -1, entryType: s.entry_type, entry: s.entry, stop: s.stop, t1: s.t1, t2: s.t2 };
+      if (s.plan) {   // a Strategy Lab signal: play it out under its own exit plan
+        const sh = require('./lab/index').shadow(bars, Math.floor(Date.parse(day + 'T00:00:00Z') / 86400000), s.pair, plan.dir, JSON.parse(s.plan));
+        if (sh && sh.status === 'CLOSED') db.prepare('UPDATE signals SET shadow_r=?, shadow_reason=?, shadow_resolved_at=? WHERE id=?').run(sh.r, sh.reason, nowIso(), s.id); else if (expired && bars.length - 1 - idx >= 45) db.prepare("UPDATE signals SET shadow_reason='EXPIRED', shadow_resolved_at=? WHERE id=?").run(nowIso(), s.id);
+        continue;
+      }
       const r = simulateTrade(bars, atrA, idx, plan, { pair: s.pair, costPips: 1, closeAtEnd: expired });
       if (r.status === 'CLOSED') db.prepare('UPDATE signals SET shadow_r=?, shadow_reason=?, shadow_resolved_at=? WHERE id=?').run(r.r, expired && r.reason === 'END' ? 'EXPIRED' : r.reason, nowIso(), s.id);
       else if (r.status === 'NOFILL') db.prepare("UPDATE signals SET shadow_reason='NOFILL', shadow_resolved_at=? WHERE id=?").run(nowIso(), s.id);
@@ -144,7 +150,7 @@ async function resolveShadows() {
   if (rows.length) push('refresh', { what: 'scorecard' });
 }
 
-app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h', setHeaders: (res, p) => { if (/(sw\.js|index\.html|app\.js|day\.js|styles\.css)$/.test(p)) res.setHeader('Cache-Control', 'no-cache'); } }));
+app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h', setHeaders: (res, p) => { if (/(sw\.js|index\.html|app\.js|day\.js|strategy\.js|styles\.css)$/.test(p)) res.setHeader('Cache-Control', 'no-cache'); } }));
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 if (require.main === module) {
   if (!PASSWORD || !SECRET || !API_KEY) console.error('WARNING: set APP_PASSWORD, SESSION_SECRET and INGEST_API_KEY. Sign-in and n8n ingestion are disabled until you do.');

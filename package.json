@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node test/smoke.js && node test/bt.js && node test/daytrade.js",
+    "test": "node test/smoke.js && node test/bt.js && node test/daytrade.js && node test/lab.js",
     "demo": "node test/demo.js"
   },
   "dependencies": {

@@ -9,7 +9,7 @@ const curStop = t => (t.trail_stop && t.trail_stop > 0) ? t.trail_stop : t.stop;
 function exposure() {
   const A = getSetting('account'); const open = db.prepare("SELECT * FROM trades WHERE status='OPEN'").all();
   const realized = db.prepare('SELECT COALESCE(SUM(pnl_usd),0) p FROM trades').get().p; const equity = A.startEquity + realized;
-  let risk = 0, usdNet = 0; open.forEach(t => { risk += Math.max(0, -pnlUsd(t.pair, t.direction, t.entry, curStop(t), t.units_left)); const dir = t.direction === 'LONG' ? 1 : -1; usdNet += (t.pair.startsWith('USD') ? dir : -dir); });
+  let risk = 0, usdNet = 0; open.forEach(t => { risk += Math.max(0, -pnlUsd(t.pair, t.direction, t.entry, curStop(t), t.units_left, t.q_usd)); const dir = t.direction === 'LONG' ? 1 : -1; usdNet += t.pair.startsWith('USD') ? dir : (t.pair.endsWith('USD') ? -dir : 0); });
   return { equity, openRiskUsd: risk, openRiskPct: equity > 0 ? risk / equity * 100 : 0, usdNet, openCount: open.length };
 }
 // Personal circuit breakers: the app tells you to stand aside when any limit trips.
